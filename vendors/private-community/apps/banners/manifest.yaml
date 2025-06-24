@@ -19,7 +19,7 @@ spec:
         path: banners/api/v1alpha1/pysrc
   description: Sample description
   group: banners.eda.local
-  image: ghcr.io/dtrichards01/private-eda-registry/banners:v0.0.0
+  image: ghcr.io/dtrichards01/private-eda-registry/banners:v0.0.1
   supportedCoreVersions:
     - v2.0.0-0
   title: banners
