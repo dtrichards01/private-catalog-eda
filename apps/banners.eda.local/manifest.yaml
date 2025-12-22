@@ -1,0 +1,23 @@
+apiVersion: core.eda.nokia.com/v1
+kind: Manifest
+metadata:
+  name: banners
+spec:
+  appInfo:
+    categories:
+      - uncategorised
+    documentation: banners/docs
+    ociSpecVersion: v1.0.0
+  author: dtrichards01
+  dependencies:
+    - file:
+        path: utils
+    - file:
+        path: common
+  description: Sample description
+  group: banners.eda.local
+  image: ghcr.io/dtrichards01/private-eda-registry/banners:v1.0.0
+  supportedCoreVersions:
+    - v4.0.0-0
+  title: Banners
+  version: v1alpha1
