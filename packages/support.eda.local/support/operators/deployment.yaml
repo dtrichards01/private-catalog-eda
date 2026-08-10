@@ -1,0 +1,34 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: eda-support-monitor
+  labels:
+    app: eda-support-monitor
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: eda-support-monitor
+  template:
+    metadata:
+      labels:
+        app: eda-support-monitor
+    spec:
+      serviceAccountName: eda-support-monitor
+      containers:
+        - name: monitor
+          image: ghcr.io/dtrichards01/private-eda-registry/support:v1.0.0
+          env:
+            - name: SUPPORT_CONFIG
+              value: /config/default_rules.yaml
+          volumeMounts:
+            - name: config
+              mountPath: /config
+            - name: data
+              mountPath: /data/support
+      volumes:
+        - name: config
+          configMap:
+            name: eda-support-rules
+        - name: data
+          emptyDir: {}

@@ -1,0 +1,27 @@
+poll_interval_seconds: 60
+cooldown_seconds: 300
+dry_run: false
+enabled: true
+rules:
+  - alarm_pattern: "BGP.*(Down|Session|Peer)"
+    workflow: checkdefaultbgppeers
+    severity: [critical, major]
+    description: BGP session alarm
+  - alarm_pattern: "Interface.*(Down|Oper|State)"
+    workflow: checkinterfaces
+    severity: [critical, major, warning]
+  - alarm_pattern: ".*ISL.*"
+    workflow: islping
+    severity: [critical, major]
+  - alarm_pattern: ".*(Edge|Gateway).*"
+    workflow: edgeping
+  - alarm_pattern: ".*Route.*(Trace|Unreachable)"
+    workflow: routetrace
+  - alarm_pattern: ".*Route.*(Lookup|Missing)"
+    workflow: routelookup
+  - alarm_pattern: ".*Attachment.*"
+    workflow: attachmentlookup
+  - alarm_pattern: ".*TechSupport.*"
+    workflow: techsupport
+  - alarm_pattern: ".*Ping.*|.*Reachability.*"
+    workflow: ping

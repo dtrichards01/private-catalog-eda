@@ -1,0 +1,54 @@
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: alarmworkflowrules.support.eda.local
+spec:
+  group: support.eda.local
+  scope: Namespaced
+  names:
+    plural: alarmworkflowrules
+    singular: alarmworkflowrule
+    kind: AlarmWorkflowRule
+    listKind: AlarmWorkflowRuleList
+  versions:
+    - name: v1alpha1
+      served: true
+      storage: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              required: [alarmPattern, workflow]
+              properties:
+                alarmPattern:
+                  type: string
+                  description: Regex matching alarm name
+                workflow:
+                  type: string
+                  description: Diagnostic workflow key (ping, routetrace, checkdefaultbgppeers, ...)
+                severity:
+                  type: array
+                  items:
+                    type: string
+                resourcePattern:
+                  type: string
+                workflowArgs:
+                  type: object
+                  x-kubernetes-preserve-unknown-fields: true
+                enabled:
+                  type: boolean
+                  default: true
+                description:
+                  type: string
+            status:
+              type: object
+              properties:
+                operState:
+                  type: string
+                lastMatchTime:
+                  type: string
+                  format: date-time
+                lastWorkflowRun:
+                  type: string

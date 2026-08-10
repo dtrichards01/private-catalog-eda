@@ -1,0 +1,12 @@
+apiVersion: support.eda.local/v1alpha1
+kind: AlarmWorkflowRule
+metadata:
+  name: bgp-session-down
+  namespace: eda
+spec:
+  alarmPattern: "BGP.*(Down|Session|Peer)"
+  workflow: checkdefaultbgppeers
+  severity:
+    - critical
+    - major
+  description: Trigger Check BGP workflow when a BGP session alarm fires.

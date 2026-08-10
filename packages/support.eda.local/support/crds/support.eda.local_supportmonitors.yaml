@@ -1,0 +1,52 @@
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: supportmonitors.support.eda.local
+spec:
+  group: support.eda.local
+  scope: Cluster
+  names:
+    plural: supportmonitors
+    singular: supportmonitor
+    kind: SupportMonitor
+    listKind: SupportMonitorList
+  versions:
+    - name: v1alpha1
+      served: true
+      storage: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                enabled:
+                  type: boolean
+                  default: true
+                pollIntervalSeconds:
+                  type: integer
+                  default: 60
+                cooldownSeconds:
+                  type: integer
+                  default: 300
+                dryRun:
+                  type: boolean
+                  default: false
+                namespaceFilter:
+                  type: string
+                  description: Optional namespace scope for alarm EQL
+            status:
+              type: object
+              properties:
+                operState:
+                  type: string
+                lastPollTime:
+                  type: string
+                  format: date-time
+                alarmsSeen:
+                  type: integer
+                triggersLastCycle:
+                  type: integer
+                lastError:
+                  type: string

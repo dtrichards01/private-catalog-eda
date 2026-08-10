@@ -1,0 +1,85 @@
+apiVersion: core.eda.nokia.com/v1
+kind: Manifest
+metadata:
+  name: support
+spec:
+  group: support.eda.local
+  version: v1alpha1
+  title: EDA Support Automation
+  description: |
+    Alarm-driven diagnostic automation for EDA. Polls active alarms, suggests root-cause,
+    and triggers diagnostic workflows (ping, routetrace, checkdefaultbgppeers, islping, techsupport, etc.).
+  author: dtrichards01
+  image: ghcr.io/dtrichards01/private-eda-registry/support:v1.0.0
+  supportedCoreVersions:
+    - v4.0.0-0
+    - v5.0.0-0
+    - v6.0.0-0
+  supportedEndpoints:
+    - srl:24.10.*
+    - srl:25.*
+    - srl:26.*
+    - sros:24.10.*
+    - sros:25.*
+    - sros:26.*
+  appInfo:
+    categories:
+      - support
+      - diagnostics
+    documentation: support/docs
+    readme: support/docs/README.md
+    ociSpecVersion: v1.0.0
+  dependencies:
+    - file:
+        path: utils
+    - file:
+        path: common
+    - file:
+        path: support/lib
+    - file:
+        path: support/intents
+    - file:
+        path: support/config
+  components:
+    - crd:
+        path: support/crds/support.eda.local_alarmworkflowrules.yaml
+        schema: support/openapiv3/eda_oas_support.eda.local_alarmworkflowrules.json
+        api:
+          expose: readWrite
+        ui:
+          category: Support
+          name: Alarm Workflow Rules
+          icon: Alarm
+        names:
+          kind: AlarmWorkflowRule
+          listKind: AlarmWorkflowRuleList
+          plural: alarmworkflowrules
+          singular: alarmworkflowrule
+    - script:
+        path: support/intents/alarmworkflowrule/config_intent.py
+        type: config
+        trigger:
+          kind: AlarmWorkflowRule
+    - crd:
+        path: support/crds/support.eda.local_supportmonitors.yaml
+        schema: support/openapiv3/eda_oas_support.eda.local_supportmonitors.json
+        api:
+          expose: readWrite
+        ui:
+          category: Support
+          name: Support Monitor
+          icon: Monitoring
+        names:
+          kind: SupportMonitor
+          listKind: SupportMonitorList
+          plural: supportmonitors
+          singular: supportmonitor
+    - script:
+        path: support/intents/supportmonitor/state_intent.py
+        type: state
+        trigger:
+          kind: SupportMonitor
+    - cr:
+        path: support/operators/deployment.yaml
+    - cr:
+        path: support/operators/rbac.yaml

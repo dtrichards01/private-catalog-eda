@@ -1,0 +1,27 @@
+apiVersion: core.eda.nokia.com/v1
+kind: Manifest
+metadata:
+  name: support
+spec:
+  appInfo:
+    categories:
+      - support
+      - diagnostics
+    documentation: support/docs
+    ociSpecVersion: v1.0.0
+  author: dtrichards01
+  dependencies:
+    - file:
+        path: utils
+    - file:
+        path: common
+  description: |
+    Alarm-driven support automation — poll alarms, root-cause hints, trigger diagnostic workflows.
+  group: support.eda.local
+  image: ghcr.io/dtrichards01/private-eda-registry/support:v1.0.0
+  supportedCoreVersions:
+    - v4.0.0-0
+    - v5.0.0-0
+    - v6.0.0-0
+  title: EDA Support Automation
+  version: v1alpha1

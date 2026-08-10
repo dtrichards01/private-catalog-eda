@@ -1,0 +1,10 @@
+apiVersion: support.eda.local/v1alpha1
+kind: SupportMonitor
+metadata:
+  name: default
+spec:
+  enabled: true
+  pollIntervalSeconds: 60
+  cooldownSeconds: 300
+  dryRun: false
+  namespaceFilter: eda
