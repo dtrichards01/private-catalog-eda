@@ -23,7 +23,7 @@ spec:
     categories:
       - services
     ociSpecVersion: v1.0.0
-    appImageDigest: sha256:b47033f8e8269d02b793b1dd0064a8a4a28819d828c2ff9752338124fdb30d2c
+    appImageDigest: sha256:e2b08bd565c148598197fe251731a58ec9431145c30e9d107268600c1177cb47
   components:
     - crd:
         path: firewall/crds/firewall.eda.labs_firewalls.yaml
