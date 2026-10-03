@@ -29,5 +29,5 @@ go run ./cmd/fwstatus -namespace clab-pan-d3l -once
 ```
 
 Published in `dtrichards01/private-catalog-eda` as
-`ghcr.io/dtrichards01/private-eda-registry/firewall:v1.0.0`.
+`ghcr.io/dtrichards01/private-eda-registry/firewall:v1.0.1`.
 The UI category is **Firewalls**.

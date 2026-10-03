@@ -7,7 +7,7 @@ spec:
   version: v1alpha1
   title: Firewalls
   description: External firewall endpoints. Health, status, and interface changes use the vendor API.
-  image: ghcr.io/dtrichards01/private-eda-registry/firewall:v1.0.0
+  image: ghcr.io/dtrichards01/private-eda-registry/firewall:v1.0.1
   author: dtrichards01
   gitPathPrefix: /
   supportedEndpoints:
@@ -23,7 +23,7 @@ spec:
     categories:
       - services
     ociSpecVersion: v1.0.0
-    appImageDigest: sha256:8d6fbff02183b5510b0b27d32b98af3f6cccdb5b12687e775df2abd681644aba
+    appImageDigest: sha256:b24cf3e0b9e83fc1e6d7e73cbb324a192eb5ff86a5ebd699d0a21d668586d70c
   components:
     - crd:
         path: firewall/crds/firewall.eda.labs_firewalls.yaml
