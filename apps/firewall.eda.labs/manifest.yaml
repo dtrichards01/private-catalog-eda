@@ -1,0 +1,80 @@
+apiVersion: core.eda.nokia.com/v1
+kind: Manifest
+metadata:
+  name: firewall
+spec:
+  group: firewall.eda.labs
+  version: v1alpha1
+  title: Firewalls
+  description: External firewall endpoints. Health, status, and interface changes use the vendor API.
+  image: ghcr.io/dtrichards01/private-eda-registry/firewall:v1.0.0
+  author: dtrichards01
+  gitPathPrefix: /
+  supportedEndpoints:
+    - srl:25.*
+    - srl:26.*
+  supportedCoreVersions:
+    - v4.0.0-0
+    - v5.0.0-0
+    - v6.0.0-0
+  appInfo:
+    documentation: firewall/docs
+    readme: firewall/docs/README.md
+    categories:
+      - services
+    ociSpecVersion: v1.0.0
+    appImageDigest: sha256:b47033f8e8269d02b793b1dd0064a8a4a28819d828c2ff9752338124fdb30d2c
+  components:
+    - crd:
+        path: firewall/crds/firewall.eda.labs_firewalls.yaml
+        schema: firewall/openapiv3/eda_oas_firewall.eda.labs_firewalls.json
+        api:
+          expose: readWrite
+        ui:
+          category: Firewalls
+          name: Firewalls
+        names:
+          kind: Firewall
+          listKind: FirewallList
+          plural: firewalls
+          singular: firewall
+    - crd:
+        path: firewall/crds/firewall.eda.labs_firewallinterfaces.yaml
+        schema: firewall/openapiv3/eda_oas_firewall.eda.labs_firewallinterfaces.json
+        api:
+          expose: readWrite
+        ui:
+          category: Firewalls
+          name: Firewall Interfaces
+        names:
+          kind: FirewallInterface
+          listKind: FirewallInterfaceList
+          plural: firewallinterfaces
+          singular: firewallinterface
+    - script:
+        path: firewall/intents/firewall/config_intent.py
+        type: config
+        trigger:
+          kind: Firewall
+    - script:
+        path: firewall/intents/firewall/state_intent.py
+        type: state
+        trigger:
+          kind: Firewall
+    - script:
+        path: firewall/intents/firewallinterface/config_intent.py
+        type: config
+        trigger:
+          kind: FirewallInterface
+    - script:
+        path: firewall/intents/firewallinterface/state_intent.py
+        type: state
+        trigger:
+          kind: FirewallInterface
+  dependencies:
+    - file:
+        path: firewall/api
+    - file:
+        path: firewall/intents
+    - file:
+        path: firewall/__init__.py

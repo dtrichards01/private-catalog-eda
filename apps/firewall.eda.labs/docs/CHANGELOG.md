@@ -1,0 +1,6 @@
+# Changelog
+
+## v1.0.0
+
+- External firewall endpoints for Palo Alto and FortiGate
+- Health, status, and interface changes use the vendor API

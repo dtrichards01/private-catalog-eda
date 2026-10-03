@@ -1,0 +1,163 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.21.0
+  name: firewalls.firewall.eda.labs
+spec:
+  group: firewall.eda.labs
+  names:
+    kind: Firewall
+    listKind: FirewallList
+    plural: firewalls
+    singular: firewall
+  scope: Namespaced
+  versions:
+  - additionalPrinterColumns:
+    - jsonPath: .spec.vendor
+      name: Vendor
+      type: string
+    - jsonPath: .spec.endpointType
+      name: Endpoint
+      type: string
+    - jsonPath: .status.operationalState
+      name: State
+      type: string
+    - jsonPath: .status.health
+      name: Health
+      type: integer
+    - jsonPath: .status.version
+      name: Version
+      type: string
+    - jsonPath: .spec.management.url
+      name: Management
+      type: string
+    name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: |-
+              FirewallSpec is an external firewall endpoint. It is not a TopoNode.
+              The fabric attaches to it through FirewallInterface resources.
+            properties:
+              description:
+                type: string
+              endpointType:
+                default: external-endpoint
+                description: Always external-endpoint. Firewalls are not fabric nodes.
+                enum:
+                - external-endpoint
+                type: string
+              fabric:
+                description: Fabric this endpoint is attached to, for example pan-d3l.
+                type: string
+              management:
+                description: |-
+                  ManagementSpec is how the collector reaches the firewall API.
+                  The password lives in a Secret named by secretRef, keys username and password.
+                properties:
+                  insecureSkipVerify:
+                    description: Lab firewalls present a private certificate.
+                    type: boolean
+                  secretRef:
+                    type: string
+                  url:
+                    description: HTTPS URL of the firewall UI or API, including port.
+                    type: string
+                required:
+                - url
+                type: object
+              vendor:
+                enum:
+                - paloalto
+                - fortinet
+                type: string
+            required:
+            - management
+            - vendor
+            type: object
+          status:
+            description: FirewallStatus is health and the networking rollup for one
+              external endpoint.
+            properties:
+              endpointType:
+                type: string
+              health:
+                type: integer
+              interfaceCount:
+                type: integer
+              lastChecked:
+                type: string
+              license:
+                description: licensed, not-required, unknown, or the vendor license
+                  state.
+                type: string
+              message:
+                type: string
+              model:
+                type: string
+              networking:
+                items:
+                  description: NetworkingStatus is one firewall NIC as seen from this
+                    endpoint.
+                  properties:
+                    address:
+                      type: string
+                    attachment:
+                      type: string
+                    interface:
+                      type: string
+                    name:
+                      type: string
+                    node:
+                      type: string
+                    observedAddress:
+                      type: string
+                    operationalState:
+                      type: string
+                    side:
+                      type: string
+                    virtualNetwork:
+                      type: string
+                    zone:
+                      type: string
+                  required:
+                  - name
+                  type: object
+                type: array
+              operationalState:
+                description: Up, Down, Degraded, or Unknown.
+                type: string
+              reachable:
+                type: boolean
+              serial:
+                type: string
+              vendor:
+                type: string
+              version:
+                type: string
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}

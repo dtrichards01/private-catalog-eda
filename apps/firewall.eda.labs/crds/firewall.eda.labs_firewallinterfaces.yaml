@@ -1,0 +1,140 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.21.0
+  name: firewallinterfaces.firewall.eda.labs
+spec:
+  group: firewall.eda.labs
+  names:
+    kind: FirewallInterface
+    listKind: FirewallInterfaceList
+    plural: firewallinterfaces
+    singular: firewallinterface
+  scope: Namespaced
+  versions:
+  - additionalPrinterColumns:
+    - jsonPath: .spec.firewall
+      name: Firewall
+      type: string
+    - jsonPath: .spec.name
+      name: Interface
+      type: string
+    - jsonPath: .spec.side
+      name: Side
+      type: string
+    - jsonPath: .spec.address
+      name: Address
+      type: string
+    - jsonPath: .spec.attachment.virtualNetwork
+      name: VNET
+      type: string
+    - jsonPath: .status.operationalState
+      name: State
+      type: string
+    name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: |-
+              FirewallInterfaceSpec is one NIC on an external firewall.
+              Create one of these to add an interface. When attachment is set, the
+              config intent also creates the leaf Interface that faces this NIC.
+            properties:
+              address:
+                description: IPv4 address and prefix, for example 10.31.1.1/24.
+                type: string
+              allowPing:
+                type: boolean
+              attachment:
+                description: Leaf port this NIC is bridged to. Omit until the cable
+                  exists.
+                properties:
+                  bridge:
+                    description: Linux bridge or VXLAN bridge on the containerlab
+                      host. Informational.
+                    type: string
+                  encapType:
+                    default: "Null"
+                    enum:
+                    - "Null"
+                    - dot1q
+                    type: string
+                  interface:
+                    description: Leaf interface resource name, for example ethernet-1-4.
+                    type: string
+                  node:
+                    type: string
+                  virtualNetwork:
+                    type: string
+                required:
+                - interface
+                - node
+                - virtualNetwork
+                type: object
+              enabled:
+                default: true
+                type: boolean
+              firewall:
+                description: Firewall resource name in the same namespace.
+                type: string
+              name:
+                description: 'Device interface name: ethernet1/1 on Palo Alto, port2
+                  on FortiGate.'
+                type: string
+              side:
+                enum:
+                - inside
+                - outside
+                type: string
+              zone:
+                type: string
+            required:
+            - firewall
+            - name
+            - side
+            type: object
+          status:
+            description: FirewallInterfaceStatus is the observed NIC and its fabric
+              attachment.
+            properties:
+              adminState:
+                type: string
+              attachmentName:
+                description: Leaf Interface resource created for this attachment.
+                type: string
+              message:
+                type: string
+              observedAddress:
+                type: string
+              operationalState:
+                type: string
+              virtualNetwork:
+                type: string
+              zone:
+                type: string
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}
