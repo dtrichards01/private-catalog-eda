@@ -68,7 +68,8 @@ spec:
                 - external-endpoint
                 type: string
               fabric:
-                description: Fabric this endpoint is attached to, for example pan-d3l.
+                description: Fabric in this namespace. The list shows every fabric
+                  in the namespace.
                 type: string
               management:
                 description: |-
@@ -86,6 +87,71 @@ spec:
                 required:
                 - url
                 type: object
+              peering:
+                description: |-
+                  How this firewall joins the fabric. Palo Alto uses eBGP to a virtual network.
+                  FortiGate VDOM 1 can use VLAN eBGP to a leaf. VDOM 2 uses EVPN in Advanced Networking.
+                properties:
+                  tenants:
+                    description: |-
+                      Tenants on this firewall. Palo Alto: a virtual system. FortiGate: a VDOM.
+                      This FortiGate license allows two VDOMs.
+                    items:
+                      description: TenantSpec is one Palo Alto virtual system or one
+                        FortiGate VDOM.
+                      properties:
+                        localAS:
+                          description: AS EDA uses on this session. The fabric overlay
+                            is 65001.
+                          format: int32
+                          type: integer
+                        mode:
+                          description: |-
+                            ebgp for a Palo Alto virtual system or a FortiGate edge VDOM.
+                            ibgp for a FortiGate service VDOM on EVPN.
+                          enum:
+                          - ebgp
+                          - ibgp
+                          type: string
+                        name:
+                          type: string
+                        peerAS:
+                          description: AS of the firewall tenant. iBGP uses the same
+                            AS as Local AS.
+                          format: int32
+                          type: integer
+                        routeHandoff:
+                          default: clients-use-firewall
+                          description: |-
+                            Who installs the path between the clients and the firewall.
+                            clients-use-firewall keeps the firewall as the client gateway.
+                            firewall-originates-default advertises 0.0.0.0/0 from the firewall.
+                            fabric-static-to-firewall installs a static on the virtual network toward the firewall.
+                          enum:
+                          - clients-use-firewall
+                          - firewall-originates-default
+                          - fabric-static-to-firewall
+                          type: string
+                        virtualNetworks:
+                          description: |-
+                            Virtual networks that eBGP with this Palo Alto tenant.
+                            A FortiGate edge VDOM leaves this empty and peers to the leaf.
+                          items:
+                            type: string
+                          type: array
+                      required:
+                      - mode
+                      - name
+                      type: object
+                    maxItems: 2
+                    type: array
+                  underlay:
+                    description: evpn-vxlan is the FortiGate service underlay. Leave
+                      empty for Palo Alto.
+                    enum:
+                    - evpn-vxlan
+                    type: string
+                type: object
               vendor:
                 enum:
                 - paloalto
@@ -99,8 +165,40 @@ spec:
             description: FirewallStatus is health and the networking rollup for one
               external endpoint.
             properties:
+              bgp:
+                description: BGP sessions read from the firewall on the last poll.
+                items:
+                  description: BGPSessionStatus is one BGP session reported by the
+                    firewall API.
+                  properties:
+                    mode:
+                      type: string
+                    neighbor:
+                      type: string
+                    state:
+                      type: string
+                  type: object
+                type: array
+              collection:
+                description: |-
+                  poll. These firewalls do not stream gNMI. Each poll writes this status,
+                  and that write is the change EDA shows.
+                type: string
               endpointType:
                 type: string
+              events:
+                description: Recent vendor events from the last poll.
+                items:
+                  description: EventStatus is one vendor event from the last poll.
+                  properties:
+                    message:
+                      type: string
+                    severity:
+                      type: string
+                    time:
+                      type: string
+                  type: object
+                type: array
               health:
                 type: integer
               interfaceCount:

@@ -1,5 +1,21 @@
 # Changelog
 
+## v1.1.0
+
+- Each interface names a tenant: a FortiGate VDOM or a Palo Alto virtual system
+- Route handoff is clients-use-firewall, firewall-originates-default, or fabric-static-to-firewall
+- Advanced Networking holds Fortinet EVPN VXLAN and the VNI. Palo Alto leaves it empty
+- A VLAN id is required when the leaf encapsulation is dot1q
+- The default route stays off unless the handoff says the firewall originates it
+
+## v1.0.2
+
+- Fabric is a list of the fabrics in the namespace
+- Palo Alto tenants use eBGP to a virtual network
+- FortiGate joins the underlay with EVPN VXLAN. Each VDOM uses iBGP. The license allows two
+- Poll writes health, BGP, and recent events onto the firewall status
+- FortiGate VXLAN is the bridge domain. The leaf cable stays untagged
+
 ## v1.0.1
 
 - Firewall interfaces commit even when the leaf attachment cannot be emitted

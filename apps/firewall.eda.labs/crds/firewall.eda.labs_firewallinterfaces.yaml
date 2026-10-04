@@ -63,6 +63,19 @@ spec:
               address:
                 description: IPv4 address and prefix, for example 10.31.1.1/24.
                 type: string
+              advanced:
+                description: EVPN VXLAN for a FortiGate service VDOM. Leave empty
+                  for Palo Alto.
+                properties:
+                  underlay:
+                    enum:
+                    - evpn-vxlan
+                    type: string
+                  vni:
+                    description: Bridge-domain VNI. The leaf cable stays untagged.
+                    format: int32
+                    type: integer
+                type: object
               allowPing:
                 type: boolean
               attachment:
@@ -75,6 +88,8 @@ spec:
                     type: string
                   encapType:
                     default: "Null"
+                    description: Null is untagged. dot1q is a VLAN to the leaf. VXLAN
+                      belongs in Advanced Networking.
                     enum:
                     - "Null"
                     - dot1q
@@ -85,11 +100,35 @@ spec:
                   node:
                     type: string
                   virtualNetwork:
+                    description: Virtual network in this namespace.
                     type: string
+                  vlanID:
+                    description: Required when encapsulation is dot1q.
+                    format: int32
+                    type: integer
                 required:
                 - interface
                 - node
                 - virtualNetwork
+                type: object
+              bgp:
+                description: |-
+                  Palo Alto eBGP to the virtual network, or FortiGate eBGP to the leaf.
+                  A FortiGate service VDOM uses iBGP. That session is paired with Advanced Networking.
+                properties:
+                  localAS:
+                    format: int32
+                    type: integer
+                  mode:
+                    enum:
+                    - ebgp
+                    - ibgp
+                    type: string
+                  peerAS:
+                    format: int32
+                    type: integer
+                required:
+                - mode
                 type: object
               enabled:
                 default: true
@@ -105,6 +144,10 @@ spec:
                 enum:
                 - inside
                 - outside
+                type: string
+              tenant:
+                description: FortiGate VDOM or Palo Alto virtual system named on the
+                  parent firewall.
                 type: string
               zone:
                 type: string
