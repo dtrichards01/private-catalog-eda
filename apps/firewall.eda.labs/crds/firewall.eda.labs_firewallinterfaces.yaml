@@ -78,14 +78,16 @@ spec:
                 type: object
               allowPing:
                 type: boolean
+              configureFirewall:
+                description: Push address, zone, admin state, and ping to this NIC
+                  through the firewall API. Palo Alto uses its XML API. Fortinet
+                  uses its REST API. Leave this off to only create the Nokia leaf
+                  attachment.
+                type: boolean
               attachment:
-                description: Leaf port this NIC is bridged to. Omit until the cable
+                description: Fabric port this NIC is cabled to. Omit until the cable
                   exists.
                 properties:
-                  bridge:
-                    description: Linux bridge or VXLAN bridge on the containerlab
-                      host. Informational.
-                    type: string
                   encapType:
                     default: "Null"
                     description: Null is untagged. dot1q is a VLAN to the leaf. VXLAN
@@ -95,9 +97,11 @@ spec:
                     - dot1q
                     type: string
                   interface:
-                    description: Leaf interface resource name, for example ethernet-1-4.
+                    description: Interface on the selected node. A slash, such as
+                      ethernet-1/4, is stored as ethernet-1-4.
                     type: string
                   node:
+                    description: Node this cable attaches to.
                     type: string
                   virtualNetwork:
                     description: Virtual network in this namespace.

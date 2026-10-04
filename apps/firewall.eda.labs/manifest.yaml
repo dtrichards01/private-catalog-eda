@@ -7,7 +7,7 @@ spec:
   version: v1alpha1
   title: Firewalls
   description: External firewall endpoints. Health, status, and interface changes use the vendor API.
-  image: ghcr.io/dtrichards01/private-eda-registry/firewall:v1.1.0
+  image: ghcr.io/dtrichards01/private-eda-registry/firewall:v1.2.0
   author: dtrichards01
   gitPathPrefix: /
   supportedEndpoints:
@@ -23,7 +23,7 @@ spec:
     categories:
       - services
     ociSpecVersion: v1.0.0
-    appImageDigest: sha256:f1b981e17811fb88e9974f9dac8d38fb5a09b5fd23b2889f677881a2fedc9956
+    appImageDigest: sha256:1abfcb04e7de29e96d4ddd0746c926c353b6053524af9a5088aec8f056f13be0
   components:
     - crd:
         path: firewall/crds/firewall.eda.labs_firewalls.yaml
@@ -71,6 +71,21 @@ spec:
         type: state
         trigger:
           kind: FirewallInterface
+    - crd:
+        path: firewall/crds/firewall.eda.labs_firewallreports.yaml
+        schema: firewall/openapiv3/eda_oas_firewall.eda.labs_firewallreports.json
+        api:
+          expose: readWrite
+        names:
+          kind: FirewallReport
+          listKind: FirewallReportList
+          plural: firewallreports
+          singular: firewallreport
+    - script:
+        path: firewall/intents/firewallreport/state_intent.py
+        type: state
+        trigger:
+          kind: FirewallReport
   dependencies:
     - file:
         path: firewall/api
