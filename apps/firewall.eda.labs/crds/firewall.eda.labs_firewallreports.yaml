@@ -26,14 +26,111 @@ spec:
             type: object
           spec:
             type: object
-            x-kubernetes-preserve-unknown-fields: true
             required:
             - firewall
             properties:
+              bgp:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    mode:
+                      type: string
+                    neighbor:
+                      type: string
+                    state:
+                      type: string
+              collection:
+                type: string
+              endpointType:
+                type: string
+              events:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    message:
+                      type: string
+                    severity:
+                      type: string
+                    time:
+                      type: string
               firewall:
+                type: string
+              health:
+                type: integer
+              interfaceCount:
+                type: integer
+              interfaces:
+                type: array
+                items:
+                  type: object
+                  required:
+                  - name
+                  properties:
+                    attachmentName:
+                      type: string
+                    message:
+                      type: string
+                    name:
+                      type: string
+                    observedAddress:
+                      type: string
+                    operationalState:
+                      type: string
+                    virtualNetwork:
+                      type: string
+                    zone:
+                      type: string
+              lastChecked:
+                type: string
+              license:
+                type: string
+              message:
+                type: string
+              model:
+                type: string
+              networking:
+                type: array
+                items:
+                  type: object
+                  required:
+                  - name
+                  properties:
+                    address:
+                      type: string
+                    attachment:
+                      type: string
+                    interface:
+                      type: string
+                    name:
+                      type: string
+                    node:
+                      type: string
+                    observedAddress:
+                      type: string
+                    operationalState:
+                      type: string
+                    side:
+                      type: string
+                    virtualNetwork:
+                      type: string
+                    zone:
+                      type: string
+              operationalState:
+                type: string
+              reachable:
+                type: boolean
+              serial:
+                type: string
+              vendor:
+                type: string
+              version:
                 type: string
           status:
             type: object
-            x-kubernetes-preserve-unknown-fields: true
+            properties:
+              message:
+                type: string
     subresources:
       status: {}
