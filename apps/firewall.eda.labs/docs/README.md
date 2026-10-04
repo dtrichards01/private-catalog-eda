@@ -33,21 +33,68 @@ stays untagged when the VNI is set; VXLAN is the bridge domain.
 Credentials stay in Secrets (`username`, `password`). Examples use `replace-me`.
 
 Firewall communication is the vendor API only. Palo Alto uses the XML API
-(`/api/`). FortiGate uses the REST API (`/api/v2`). `fwstatus` reads health, version, serial, license, interface state, BGP, and
-recent vendor events from those APIs. These firewalls do not stream gNMI.
-Each poll writes `.status`, and that write is what EDA shows. It pushes a
-NIC address, ping, admin state, zone, or BGP session only when the API state
-differs, and it does not originate a default route.
-There is no firewall CLI or SSH session.
+(`/api/`). FortiGate uses the REST API (`/api/v2`). There is no firewall CLI
+or SSH session. These firewalls do not stream gNMI.
 
-`fwstatus` uses the EDA SDK (`eda.dev/edk`) Kubernetes client to write
-`.status` (health, version, serial, license, and the networking rollup).
-Inside the cluster, `FWSTATUS_STATE_DB=1` also publishes that status to the
-state aggregator. Do not set that flag outside the cluster.
+## What the UI shows
 
-```bash
-go run ./cmd/fwstatus -namespace clab-pan-d3l -once
+The Firewalls page reads the state database, not `kubectl`. The State Engine
+runs `firewall/intents/firewall/state_intent.py` when the Firewall object
+changes. That script must call:
+
+```python
+eda.update_cr(
+    schema=eda.Schema(group="firewall.eda.labs", version="v1alpha1", kind="Firewall"),
+    name=name,
+    status={...},
+)
 ```
+
+`eda.Schema` is required. A missing schema raises `TypeError`, and the
+v1.1.0 script swallowed that error, so the page stayed blank. The same
+call on `FirewallInterface` fills the interface Operational State column.
+
+`kubectl` status and `fwstatus` with `FWSTATUS_STATE_DB=1` write a different
+store. They do not fill the page. Do not run that publisher from `eda-toolbox`.
+
+The State Engine runs the script when the object is created or changed. It
+does not call the firewall HTTPS API on a timer. The script runs in
+MicroPython and cannot import SSL. The 2026-10-04 lab script publishes the
+last API result onto the object: both firewalls `Up`, health `100`, and each
+interface `Up`. A later vendor poll has to call this same `update_cr` or the
+page stays on that result.
+
+`fwstatus -poll-only` still reads the vendor API and writes Kubernetes
+status. It pushes a NIC address, ping, admin state, zone, or BGP session
+only when the API state differs, and it does not originate a default route.
+
+## States
+
+The page field `status.operationalState` is this app's rollup, not a vendor
+enum. `fwstatus` computes it from the API:
+
+| Rollup | Health | When |
+|--------|--------|------|
+| `Up` | 100 | API login succeeded and every configured NIC is up |
+| `Degraded` | 70 | API ok, and at least one NIC is down |
+| `Degraded` | 40 | API login failed |
+| `Degraded` | 50 | The API was attempted without credentials |
+| `Down` | 0 | API unreachable |
+| `Unknown` | 0 | No credentials, or the NIC was missing from the API response |
+
+A NIC `operationalState` is `Up`, `Down`, or `Unknown`. Any other interface
+string from the API is kept as-is.
+
+FortiGate interface state is CMDB `system/interface` field `status`: `up` or
+`down`. Palo Alto interface state is the operational XML `state` or
+`status`: `up` or `down`.
+
+BGP is a separate list, `status.bgp[].state`. It is the session string from
+the API, not folded into `Up` or `Down`. Palo Alto is
+`show routing protocol bgp peer` `<status>`. FortiGate is
+`/api/v2/monitor/router/bgp/neighbors` field `state`. Both return the BGP
+state name. `Established` is the up session. The other names those APIs
+return are `Idle`, `Connect`, `Active`, `OpenSent`, and `OpenConfirm`.
 
 Published in `dtrichards01/private-catalog-eda` as
 `ghcr.io/dtrichards01/private-eda-registry/firewall:v1.1.0`.

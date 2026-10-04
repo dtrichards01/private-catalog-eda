@@ -1,5 +1,13 @@
 # Changelog
 
+## Lab, 2026-10-04
+
+The installed image is still v1.1.0. The Firewalls page was blank because
+the state script did not call `eda.update_cr` with `eda.Schema`. The live
+scripts on the in-cluster app git (`e41b5bc`) publish `Up` / health 100 and
+interface `Up`. Reinstalling the v1.1.0 image replaces that git commit.
+`kubectl` status is not the page.
+
 ## v1.1.0
 
 - Each interface names a tenant: a FortiGate VDOM or a Palo Alto virtual system
