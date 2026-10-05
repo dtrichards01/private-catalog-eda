@@ -18,8 +18,10 @@ or the spine interface.
 
 VLAN on the Firewall Interface (`spec.vlanID`) is pushed to the firewall.
 Empty leaves the port untagged. Palo Alto creates `ethernet1/1.<vlan>`.
-FortiGate creates `port2.<vlan>` on that port. Allow Ping creates the Palo
-Alto management profile `eda-ping`. That name is not a field. Allow Ping is the switch that creates it. Deleting the Firewall Interface removes
+FortiGate creates `port2.<vlan>` on that port. Allow Ping is off unless set.
+On Palo Alto it attaches management profile `eda-ping`, and that NIC answers
+ping. When Allow Ping is off, the profile is not attached and ping does not
+work. Deleting the Firewall Interface removes
 the pushed address, VLAN interface, zone, BGP neighbor, and `eda-ping` when
 nothing else uses that profile. The collector can remove only a NIC it has
 recorded. The physical port stays.
@@ -188,8 +190,8 @@ state name. `Established` is the up session. The other names those APIs
 return are `Idle`, `Connect`, `Active`, `OpenSent`, and `OpenConfirm`.
 
 Published in `dtrichards01/private-catalog-eda` as
-`ghcr.io/dtrichards01/private-eda-registry/firewall:v1.2.7`.
-The collector image is `ghcr.io/dtrichards01/private-eda-registry/fwstatus:v1.2.7`.
+`ghcr.io/dtrichards01/private-eda-registry/firewall:v1.2.8`.
+The collector image is `ghcr.io/dtrichards01/private-eda-registry/fwstatus:v1.2.8`.
 The UI category is **Firewalls**. There is no Bridge field. Node and
 Interface on an attachment are pickers: the interface list is the
 interfaces of the selected node.

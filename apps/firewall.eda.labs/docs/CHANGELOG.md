@@ -1,5 +1,9 @@
 # Changelog
 
+## v1.2.8
+
+- Allow Ping is off unless set. Palo Alto attaches management profile `eda-ping` only when it is set, and removes that profile when it is off so the NIC does not answer ping
+
 ## v1.2.7
 
 - Palo Alto writes the NIC address as a layer3 IP entry, so the BGP local AS and peer AS can commit
