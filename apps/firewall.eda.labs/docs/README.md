@@ -7,7 +7,10 @@ port, the router, and the BGP peer, are part of the virtual network.
 The app pushes the NIC and its BGP session to the firewall API. The firewall
 Vendor selects Palo Alto or FortiGate, and Tenant selects the virtual system
 or VDOM. Deleting the interface removes that NIC config and BGP neighbor
-from the firewall.
+from the firewall. VLAN on the Firewall Interface is pushed to the
+firewall: Palo Alto creates a subinterface, and FortiGate creates a VLAN
+interface on that port. Allow Ping creates the Palo Alto management
+profile `eda-ping`.
 Advanced Networking on Fortinet-2 emits the default interface, EVPN policy,
 default BGP group, and default BGP peer. It does not emit a default router.
 
@@ -129,8 +132,8 @@ state name. `Established` is the up session. The other names those APIs
 return are `Idle`, `Connect`, `Active`, `OpenSent`, and `OpenConfirm`.
 
 Published in `dtrichards01/private-catalog-eda` as
-`ghcr.io/dtrichards01/private-eda-registry/firewall:v1.2.4`.
-The collector image is `ghcr.io/dtrichards01/private-eda-registry/fwstatus:v1.2.4`.
+`ghcr.io/dtrichards01/private-eda-registry/firewall:v1.2.5`.
+The collector image is `ghcr.io/dtrichards01/private-eda-registry/fwstatus:v1.2.5`.
 The UI category is **Firewalls**. There is no Bridge field. Node and
 Interface on an attachment are pickers: the interface list is the
 interfaces of the selected node.

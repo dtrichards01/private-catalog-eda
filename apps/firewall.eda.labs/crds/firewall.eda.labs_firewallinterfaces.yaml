@@ -153,6 +153,14 @@ spec:
                 description: FortiGate VDOM or Palo Alto virtual system named on the
                   parent firewall.
                 type: string
+              vlanID:
+                description: VLAN tag pushed to this firewall NIC. Empty leaves the
+                  port untagged. Palo Alto creates a subinterface. FortiGate creates
+                  a VLAN interface on this port.
+                format: int32
+                maximum: 4094
+                minimum: 1
+                type: integer
               zone:
                 type: string
             required:

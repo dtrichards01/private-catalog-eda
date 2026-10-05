@@ -1,5 +1,10 @@
 # Changelog
 
+## v1.2.5
+
+- Firewall Interface has a VLAN field on the main form. Palo Alto pushes it as a subinterface. FortiGate pushes it as a VLAN interface on that port. Empty stays untagged
+- Deleting a Firewall Interface also removes the eda-ping management profile from Palo Alto when nothing else uses it
+
 ## v1.2.4
 
 - BGP on a FirewallInterface is written to the firewall API. The firewall Vendor selects Palo Alto or FortiGate. Tenant selects the virtual system or VDOM, and empty uses vsys1 or root
