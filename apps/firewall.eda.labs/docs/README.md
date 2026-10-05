@@ -1,24 +1,82 @@
 # Firewalls
 
-External firewall endpoints for the `pan-d3l` lab. Palo Alto and FortiGate are
-not TopoNodes. Each firewall is a `Firewall` resource. Each NIC is a
-`FirewallInterface`. Palo Alto and Fortinet-1 fabric objects, the edge
-port, the router, and the BGP peer, are part of the virtual network.
-The app pushes the NIC and its BGP session to the firewall API. The firewall
-Vendor selects Palo Alto or FortiGate, and Tenant selects the virtual system
-or VDOM. Deleting the interface removes that NIC config and BGP neighbor
-from the firewall. VLAN on the Firewall Interface is pushed to the
-firewall: Palo Alto creates a subinterface, and FortiGate creates a VLAN
-interface on that port. Allow Ping creates the Palo Alto management
-profile `eda-ping`.
-Advanced Networking on Fortinet-2 emits the default interface, EVPN policy,
-default BGP group, and default BGP peer. It does not emit a default router.
+This is the writeup for the `pan-d3l` lab, including the topology diagram.
+Palo Alto and FortiGate are not TopoNodes. Each firewall is a `Firewall`
+resource. Each NIC is a `FirewallInterface`.
 
-| Endpoint | Role | Management | Data |
-|----------|------|------------|------|
-| `palo-alto` | Leaf eBGP, one virtual system | `https://100.124.186.51:8444` | `ethernet1/1` `10.31.1.1/24` on `pan-inside`, `ethernet1/2` `10.31.2.1/24` on `pan-outside` |
-| `fortigate` | Leaf PE/CE. One VLAN and one eBGP session per VDOM | `https://100.124.186.50:8443` | `port2` toward leaf1, `port3` toward leaf2. Live addresses `10.21.0.1/24` and `10.22.0.1/24` are still untagged in VDOM `root` |
-| `fortigate-2` | EVPN. Fabric underlay from the spines | `https://100.124.186.50:8445` | `port2` to spine1, `port3` to spine2. Both are up at `0.0.0.0` |
+A Firewall on its own is monitoring only. The collector polls it and does
+not write address, VLAN, zone, or BGP. A Firewall Interface pushes that NIC
+when Configure Firewall is set, and pushes eBGP when BGP mode is `ebgp`.
+The Firewall Vendor selects Palo Alto or FortiGate. Tenant selects the
+virtual system or VDOM. Empty uses `vsys1` or `root`.
+
+Palo Alto and Fortinet-1 fabric objects, the edge port, the router, and the
+BGP peer, belong on the virtual network. The app does not emit them.
+Advanced Networking on Fortinet-2 emits the default interface, EVPN policy,
+default BGP group, and default BGP peer. It does not emit a default router
+or the spine interface.
+
+VLAN on the Firewall Interface (`spec.vlanID`) is pushed to the firewall.
+Empty leaves the port untagged. Palo Alto creates `ethernet1/1.<vlan>`.
+FortiGate creates `port2.<vlan>` on that port. Allow Ping creates the Palo
+Alto management profile `eda-ping`. Deleting the Firewall Interface removes
+the pushed address, VLAN interface, zone, BGP neighbor, and `eda-ping` when
+nothing else uses that profile. The collector can remove only a NIC it has
+recorded. The physical port stays.
+
+## Topology
+
+EDA is Talos #2, `https://100.124.186.55/`, namespace `clab-pan-d3l`.
+Containerlab runs on `nokia@100.124.186.51`. The firewalls are KVM VMs on
+`ubuntu@100.124.186.50`, not containerlab nodes. Cable source:
+`pan-d3l.clab.yml` plus the host bridges in `start-fw-vms.sh`.
+
+```mermaid
+flowchart LR
+  subgraph spines [Spines]
+    spine1
+    spine2
+  end
+  subgraph leaves [Leaves]
+    leaf1
+    leaf2
+  end
+  spine1 ---|e1-1 / e1-1| leaf1
+  spine2 ---|e1-1 / e1-2| leaf1
+  spine1 ---|e1-2 / e1-1| leaf2
+  spine2 ---|e1-2 / e1-2| leaf2
+  client1 ---|eth1 / e1-3| leaf1
+  client3 ---|eth1 / e1-6| leaf1
+  client2 ---|eth1 / e1-3| leaf2
+  client4 ---|eth1 / e1-6| leaf2
+  leaf1 ---|e1-4 / ethernet1/1| palo[Palo Alto]
+  leaf2 ---|e1-4 / ethernet1/2| palo
+  leaf1 ---|e1-5 VXLAN 10021 / port2| fg1[FortiGate 1]
+  leaf2 ---|e1-5 VXLAN 10022 / port3| fg1
+  spine1 ---|e1-3 VXLAN 10023 / port2| fg2[FortiGate 2]
+  spine2 ---|e1-3 VXLAN 10024 / port3| fg2
+```
+
+| Link | Fabric | Firewall or client |
+|------|--------|--------------------|
+| ISL | leaf1 `e1-1` — spine1 `e1-1`, leaf1 `e1-2` — spine2 `e1-1`, leaf2 `e1-1` — spine1 `e1-2`, leaf2 `e1-2` — spine2 `e1-2` | underlay eBGP, pool `ipv4-pool` `12.0.0.0/8` /31 |
+| Palo Alto inside | leaf1 `e1-4` | `ethernet1/1`. Address cleared 2026-10-05. Cable remains |
+| Palo Alto outside | leaf2 `e1-4` | `ethernet1/2`. Address cleared 2026-10-05. Cable remains |
+| client1 | leaf1 `e1-3` | `10.31.1.2/24`, gateway `10.31.1.1` |
+| client2 | leaf2 `e1-3` | `10.31.2.2/24`, gateway `10.31.2.1` |
+| FortiGate 1 inside | leaf1 `e1-5`, VXLAN VNI `10021` | `port2` `10.21.0.1/24` |
+| FortiGate 1 outside | leaf2 `e1-5`, VXLAN VNI `10022` | `port3` `10.22.0.1/24` |
+| client3 | leaf1 `e1-6` | `10.21.0.3/24`, gateway `10.21.0.1` |
+| client4 | leaf2 `e1-6` | `10.22.0.2/24`, gateway `10.22.0.1` |
+| FortiGate 2 underlay | spine1 `e1-3`, VXLAN VNI `10023` | `port2` `10.23.0.1/24`, fabric `10.23.0.254` |
+| FortiGate 2 underlay | spine2 `e1-3`, VXLAN VNI `10024` | `port3` `10.24.0.1/24`, fabric `10.24.0.254` |
+| FortiGate 2 clients | leaf1 and leaf2 `e1-7` | VNETs `fg2-local` VNI 208 and `fg2-remote` VNI 207 |
+
+| Endpoint | Role | Management |
+|----------|------|------------|
+| `palo-alto` | Leaf eBGP, one virtual system | `https://100.124.186.51:8444` |
+| `fortigate` | Leaf PE/CE. One VLAN and one eBGP session per VDOM | `https://100.124.186.50:8443` |
+| `fortigate-2` | EVPN underlay from the spines | `https://100.124.186.50:8445` |
 
 `spec.fabric` is a dropdown of the fabrics in the namespace.
 
@@ -40,20 +98,18 @@ network is `.254`.
 The two FortiGates are not the same role.
 
 FortiGate 1 is standard leaf connectivity. Each tenant is a VDOM. Each VDOM
-gets its own VLAN (`encapType: dot1q` plus `vlanID`) and its own eBGP PE/CE
+gets its own VLAN (`spec.vlanID` on the Firewall Interface, and `dot1q` on the leaf) and its own eBGP PE/CE
 session to the leaf. It does not join the fabric underlay and it does not
-originate the EVPN VTEP. The cables in the lab today are still untagged
-iBGP in VDOM `root` on leaf `e1-5` (VXLAN VNI 10021 and 10022). That cutover
-waits until VDOM 2 exists.
+originate the EVPN VTEP. The cables are untagged in VDOM `root`:
+`port2` `10.21.0.1/24` and `port3` `10.22.0.1/24`, BGP AS 65201 toward
+`.254` remote AS 65001. The VLAN-per-VDOM cutover waits until VDOM 2 exists.
 
 FortiGate 2 is the EVPN firewall. The fabric underlay extends into it on
 interlinks to the spines: spine1 `e1-3` to `port2` (VXLAN VNI 10023) and
 spine2 `e1-3` to `port3` (VXLAN VNI 10024). Those are not leaf edge ports
 and they are not client gateways. iBGP to the spine route reflectors and
-the VTEP belong on this firewall. The cluster still has the earlier leaf
-`e1-7` / `e1-8` cables and VNETs `fg2-inside` / `fg2-outside`. The repo
-files `start-fw-vms.sh` and `pan-d3l-fg2.yaml` name the spine ports and
-have not been applied.
+the VTEP belong on this firewall. Client VNETs are `fg2-local` and
+`fg2-remote` on leaf `e1-7`. The spine links are the underlay.
 
 Palo Alto leaves Advanced Networking empty. A FortiGate EVPN VDOM uses
 **Advanced Networking** (`underlay: evpn-vxlan`). On FortiGate 1 the leaf
@@ -94,9 +150,8 @@ store. They do not fill the page. Do not run that publisher from `eda-toolbox`.
 The State Engine cannot call the firewall HTTPS API. The collector does.
 It runs as Deployment `eda-fwstatus` in `eda-system`. Installing the app
 does not start that Deployment. `spec.configureFirewall` on an interface
-is what allows the collector to push that NIC through the vendor API.
-Leave it off to only create the Nokia leaf attachment. The collector does
-not rewrite BGP when it starts, and it does not originate a default route.
+pushes that NIC, including `spec.vlanID`, through the vendor API. BGP mode
+`ebgp` pushes the neighbor. The collector does not originate a default route.
 
 ## States
 
@@ -106,6 +161,7 @@ enum. `fwstatus` computes it from the API:
 | Rollup | Health | When |
 |--------|--------|------|
 | `Up` | 100 | API login succeeded and every configured NIC is up |
+| `Degraded` | 80 | API ok, and a NIC is up but its BGP session is not |
 | `Degraded` | 70 | API ok, and at least one NIC is down |
 | `Degraded` | 40 | API login failed |
 | `Degraded` | 50 | The API was attempted without credentials |
@@ -132,17 +188,18 @@ state name. `Established` is the up session. The other names those APIs
 return are `Idle`, `Connect`, `Active`, `OpenSent`, and `OpenConfirm`.
 
 Published in `dtrichards01/private-catalog-eda` as
-`ghcr.io/dtrichards01/private-eda-registry/firewall:v1.2.5`.
-The collector image is `ghcr.io/dtrichards01/private-eda-registry/fwstatus:v1.2.5`.
+`ghcr.io/dtrichards01/private-eda-registry/firewall:v1.2.6`.
+The collector image stays `ghcr.io/dtrichards01/private-eda-registry/fwstatus:v1.2.5`.
 The UI category is **Firewalls**. There is no Bridge field. Node and
 Interface on an attachment are pickers: the interface list is the
 interfaces of the selected node.
 
-The 2026-10-04 demo on Talos #2 uses `clients-use-firewall`. Palo Alto
-tenant `vsys1` is eBGP. The running FortiGate 1 sessions are still iBGP in
-VDOM `root`, with Advanced Networking VNI 200 inside and 201 outside.
-That is the live path, not the leaf PE/CE VLAN target above. Both
-FortiGates are `multi-vdom`, and only `root` is present. Client1 to
-client2 and client3 to client4 pinged with no loss after multi-vdom was
-turned on. FortiGate 2 has a valid evaluation license and no data-port
-addresses. Do not add a default route.
+On 2026-10-05 the Palo Alto Firewall Interfaces were deleted in EDA before
+the collector had recorded the push, so the box kept `10.31.1.1/24`,
+`10.31.2.1/24`, zones `inside` and `outside`, profile `eda-ping`, and BGP
+peer group `eda`. Those were removed through the API. The physical
+`ethernet1/1` and `ethernet1/2` remain, with no address. FortiGate 1 still
+has `port2` `10.21.0.1/24` and `port3` `10.22.0.1/24` in VDOM `root`.
+FortiGate 2 still has `port2` `10.23.0.1/24` and `port3` `10.24.0.1/24`.
+Both FortiGates are `multi-vdom` and only `root` exists. The license allows
+one extra VDOM. Do not factory-reset, and do not add a default route.

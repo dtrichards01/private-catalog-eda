@@ -1,5 +1,9 @@
 # Changelog
 
+## v1.2.6
+
+- `firewall/docs/README.md` is the lab writeup and now includes the topology diagram, the VLAN push, and the delete behavior
+
 ## v1.2.5
 
 - Firewall Interface has a VLAN field on the main form. Palo Alto pushes it as a subinterface. FortiGate pushes it as a VLAN interface on that port. Empty stays untagged
