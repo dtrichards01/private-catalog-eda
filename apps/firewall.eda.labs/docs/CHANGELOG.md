@@ -1,5 +1,9 @@
 # Changelog
 
+## v1.2.9
+
+- Summary in `firewall/docs/SUMMARY.md`: concept prototype, two use cases, and the production path (Push Pull Provider in EDA 26.12.1)
+
 ## v1.2.8
 
 - Allow Ping is off unless set. Palo Alto attaches management profile `eda-ping` only when it is set, and removes that profile when it is off so the NIC does not answer ping
