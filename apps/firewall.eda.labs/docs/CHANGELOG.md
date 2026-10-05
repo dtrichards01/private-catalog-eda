@@ -1,12 +1,29 @@
 # Changelog
 
-## Lab, 2026-10-04
+## v1.2.2
 
-The installed image is still v1.1.0. The Firewalls page was blank because
-the state script did not call `eda.update_cr` with `eda.Schema`. The live
-scripts on the in-cluster app git (`e41b5bc`) publish `Up` / health 100 and
-interface `Up`. Reinstalling the v1.1.0 image replaces that git commit.
-`kubectl` status is not the page.
+- Firewall and FirewallInterface operational state includes BGP when the interface specifies it. A port that is up with that session down is Degraded
+- The state column uses the EDA circle icon: Up, Degraded, Down, Unknown
+- Advanced Networking on a FirewallInterface emits a default interface, an EVPN policy, a default BGP group, and a default BGP peer. It does not emit a default router and it does not put the spine port in the client virtual network
+- The advanced VNI has to match that client virtual network. Edge and underlay sessions are eBGP
+- Collector image `fwstatus:v1.2.2` computes that rollup. The app install does not start the collector
+
+## Lab 2026-10-04
+
+Not an app release. FortiGate 1 is the leaf PE/CE firewall: one VLAN and one eBGP session per VDOM. FortiGate 2 is the EVPN firewall: spine1 `e1-3` and spine2 `e1-3` are the underlay interlinks. Both boxes are `multi-vdom`. Only VDOM `root` exists. The live FortiGate 1 cables are still untagged iBGP, and the live FortiGate 2 cables are still the leaf `e1-7` / `e1-8` pair.
+
+## v1.2.1
+
+- FirewallReport declares status and the collector fields, so the Firewalls page loads
+- v1.2.0 returned HTTP 500 for the app OpenAPI (`did not find status` on FirewallReport) and the page listed no firewalls
+
+## v1.2.0
+
+- The Bridge field is removed from Firewall Interfaces
+- Node and Interface are pickers. The interface list follows the selected node
+- Configure Firewall pushes that NIC through the Palo Alto or FortiGate API
+- The collector writes a FirewallReport. That report's state script publishes Firewall and FirewallInterface status
+- The Firewall and FirewallInterface state scripts no longer publish a hardcoded Up
 
 ## v1.1.0
 
