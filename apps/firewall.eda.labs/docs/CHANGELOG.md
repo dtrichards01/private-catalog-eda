@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.2.7
+
+- Palo Alto writes the NIC address as a layer3 IP entry, so the BGP local AS and peer AS can commit
+- Allow Ping says it creates management profile `eda-ping`. Fabric AS and Firewall AS name which number is written on the firewall
+- Virtual Network lists virtual networks that already exist and does not create one
+
 ## v1.2.6
 
 - `firewall/docs/README.md` is the lab writeup and now includes the topology diagram, the VLAN push, and the delete behavior

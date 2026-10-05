@@ -19,7 +19,7 @@ or the spine interface.
 VLAN on the Firewall Interface (`spec.vlanID`) is pushed to the firewall.
 Empty leaves the port untagged. Palo Alto creates `ethernet1/1.<vlan>`.
 FortiGate creates `port2.<vlan>` on that port. Allow Ping creates the Palo
-Alto management profile `eda-ping`. Deleting the Firewall Interface removes
+Alto management profile `eda-ping`. That name is not a field. Allow Ping is the switch that creates it. Deleting the Firewall Interface removes
 the pushed address, VLAN interface, zone, BGP neighbor, and `eda-ping` when
 nothing else uses that profile. The collector can remove only a NIC it has
 recorded. The physical port stays.
@@ -151,7 +151,7 @@ The State Engine cannot call the firewall HTTPS API. The collector does.
 It runs as Deployment `eda-fwstatus` in `eda-system`. Installing the app
 does not start that Deployment. `spec.configureFirewall` on an interface
 pushes that NIC, including `spec.vlanID`, through the vendor API. BGP mode
-`ebgp` pushes the neighbor. The collector does not originate a default route.
+`ebgp` pushes the neighbor. Fabric AS is the peer AS on the firewall. Firewall AS is the firewall local AS. The collector does not originate a default route. The Virtual Network field lists virtual networks that already exist in the namespace. It does not create one.
 
 ## States
 
@@ -188,8 +188,8 @@ state name. `Established` is the up session. The other names those APIs
 return are `Idle`, `Connect`, `Active`, `OpenSent`, and `OpenConfirm`.
 
 Published in `dtrichards01/private-catalog-eda` as
-`ghcr.io/dtrichards01/private-eda-registry/firewall:v1.2.6`.
-The collector image stays `ghcr.io/dtrichards01/private-eda-registry/fwstatus:v1.2.5`.
+`ghcr.io/dtrichards01/private-eda-registry/firewall:v1.2.7`.
+The collector image is `ghcr.io/dtrichards01/private-eda-registry/fwstatus:v1.2.7`.
 The UI category is **Firewalls**. There is no Bridge field. Node and
 Interface on an attachment are pickers: the interface list is the
 interfaces of the selected node.
