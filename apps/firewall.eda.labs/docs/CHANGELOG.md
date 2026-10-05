@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.2.4
+
+- BGP on a FirewallInterface is written to the firewall API. The firewall Vendor selects Palo Alto or FortiGate. Tenant selects the virtual system or VDOM, and empty uses vsys1 or root
+- FortiGate eBGP is a neighbor in that VDOM. EVPN is set only when Advanced Networking is on. No default route is originated
+- Deleting a FirewallInterface removes that NIC address, zone, and BGP neighbor from the firewall. The collector does this on its next poll
+
 ## v1.2.3
 
 - Palo Alto and Fortinet-1 no longer emit a router, IRB, BGP peer, or edge interface. Those belong on the virtual network
