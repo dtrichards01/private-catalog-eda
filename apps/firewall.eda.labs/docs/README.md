@@ -2,9 +2,11 @@
 
 External firewall endpoints for the `pan-d3l` lab. Palo Alto and FortiGate are
 not TopoNodes. Each firewall is a `Firewall` resource. Each NIC is a
-`FirewallInterface`. Creating a `FirewallInterface` is how you add an interface.
-When `spec.attachment` is set, the config intent also creates the leaf
-`Interface` that faces that NIC and labels it with the VNET.
+`FirewallInterface`. Palo Alto and Fortinet-1 fabric objects, the edge
+port, the router, and the BGP peer, are part of the virtual network.
+The app pushes the NIC, and the tenant named on it, to the firewall API.
+Advanced Networking on Fortinet-2 emits the default interface, EVPN policy,
+default BGP group, and default BGP peer. It does not emit a default router.
 
 | Endpoint | Role | Management | Data |
 |----------|------|------------|------|
@@ -124,8 +126,8 @@ state name. `Established` is the up session. The other names those APIs
 return are `Idle`, `Connect`, `Active`, `OpenSent`, and `OpenConfirm`.
 
 Published in `dtrichards01/private-catalog-eda` as
-`ghcr.io/dtrichards01/private-eda-registry/firewall:v1.2.2`.
-The collector image is `ghcr.io/dtrichards01/private-eda-registry/fwstatus:v1.2.2`.
+`ghcr.io/dtrichards01/private-eda-registry/firewall:v1.2.3`.
+The collector image is `ghcr.io/dtrichards01/private-eda-registry/fwstatus:v1.2.3`.
 The UI category is **Firewalls**. There is no Bridge field. Node and
 Interface on an attachment are pickers: the interface list is the
 interfaces of the selected node.

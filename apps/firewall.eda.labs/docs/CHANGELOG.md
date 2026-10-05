@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.2.3
+
+- Palo Alto and Fortinet-1 no longer emit a router, IRB, BGP peer, or edge interface. Those belong on the virtual network
+- BGP on a FirewallInterface is the firewall-side request. Tenant selects the existing virtual system or VDOM for the API push. Empty uses vsys1 or root
+- Advanced Networking still emits the default interface, EVPN policy, default BGP group, and default BGP peer. It does not emit the spine interface or a default router
+- Collector image `fwstatus:v1.2.3`
+
 ## v1.2.2
 
 - Firewall and FirewallInterface operational state includes BGP when the interface specifies it. A port that is up with that session down is Degraded
