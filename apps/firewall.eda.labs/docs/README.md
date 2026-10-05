@@ -3,6 +3,7 @@
 This lab app is a concept prototype, not a product. The summary, the two use cases, and the production path are in [SUMMARY.md](SUMMARY.md). For production, EDA talks to the firewall API through the Push Pull Provider in EDA 26.12.1.
 
 This file is the `pan-d3l` operational writeup, including the topology diagram.
+The resource intents and the collector's Palo Alto and FortiGate API path are in [SUMMARY.md](SUMMARY.md).
 Palo Alto and FortiGate are not TopoNodes. Each firewall is a `Firewall`
 resource. Each NIC is a `FirewallInterface`.
 
@@ -192,7 +193,7 @@ state name. `Established` is the up session. The other names those APIs
 return are `Idle`, `Connect`, `Active`, `OpenSent`, and `OpenConfirm`.
 
 Published in `dtrichards01/private-catalog-eda` as
-`ghcr.io/dtrichards01/private-eda-registry/firewall:v1.2.9`.
+`ghcr.io/dtrichards01/private-eda-registry/firewall:v1.2.10`.
 The collector image stays `ghcr.io/dtrichards01/private-eda-registry/fwstatus:v1.2.8`.
 The UI category is **Firewalls**. There is no Bridge field. Node and
 Interface on an attachment are pickers: the interface list is the

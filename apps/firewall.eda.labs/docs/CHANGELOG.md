@@ -1,5 +1,9 @@
 # Changelog
 
+## v1.2.10
+
+- Summary explains each resource and intent, and how the collector uses the Palo Alto XML API and the FortiGate REST API
+
 ## v1.2.9
 
 - Summary in `firewall/docs/SUMMARY.md`: concept prototype, two use cases, and the production path (Push Pull Provider in EDA 26.12.1)
