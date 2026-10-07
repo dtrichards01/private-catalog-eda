@@ -37,33 +37,56 @@ AS. The app does not originate a default route. Deleting the Firewall
 Interface removes the config the collector has recorded. The physical port
 stays.
 
-## Use case 2 — FortiGate on the spine underlay
+## Use case 2 — FortiGate as an EVPN VTEP on the spines
 
-FortiGate 2 attaches to the spines, not to leaf edge ports. Client virtual
-networks stay on the leaves. A Firewall Interface with Advanced Networking
-has its own section: spine node and port, encapsulation and VLAN, BGP
-(Fabric AS, Firewall AS, address families), and services. Attachment and
-classic BGP stay empty.
+FortiGate 2 joins the overlay as a VTEP. It is cabled to the spines, not
+to leaf edge ports, and client virtual networks stay on the leaves. The
+model is: eBGP from each spine to the firewall with the `evpn` family, the
+VNI owned by the EDA virtual network, and the firewall mapping that VNI to
+a VDOM.
 
-The intent builds the spine default interface, a policy for the chosen
-address families, the default BGP group, and the default BGP peer. It does
-not build a default router or the spine interface. Families default to
-`ipv4-unicast` (the VTEP subnet) and `evpn` (the services).
+The VNI is not learned by the firewall. A VTEP joins only the EVPN
+instances it is configured for, so something has to write the EVPN instance
+and VXLAN interface onto the FortiGate. In the prototype that is the
+collector. In production it is the Push Pull Provider.
 
-One underlay port carries many services. Each service is a tenant (the
-VDOM) and an existing client virtual network. The collector reads that
-network's bridge domain and pushes the same VNI, EVI, and route target to
-the FortiGate: an EVPN instance, a VXLAN interface `vxlan<vni>` sourced from
-the underlay port, and the service address on that interface. An expected
-VNI on the service is optional and has to match the bridge domain. The
-collector also advertises the underlay port subnet in BGP so the leaves can
-reach the FortiGate VXLAN source.
+A Firewall Interface with Advanced Networking has its own section: spine
+node and port, encapsulation and VLAN, BGP (Fabric AS, Firewall AS, address
+families), and services. Attachment and classic BGP stay empty. The intent
+builds the spine default interface, a policy for the chosen address
+families, the default BGP group, and the default BGP peer. It does not
+build a default router or the spine interface. Families default to:
 
-The lab demo stays in VDOM `root`. Inside and outside are two services
-(`fg2-local` and `fg2-remote`) on different VNIs over the same EVPN
-sessions, not extra BGP sessions or a second VDOM.
+- `ipv4-unicast`, which carries the firewall link subnet so the leaves can
+  reach the VTEP.
+- `evpn`, which carries the overlay routes.
+
+Each service is a tenant (the VDOM) and an existing client virtual network.
+The collector reads that network's bridge domain for the VNI, EVI, and route
+target EDA allocated. It writes the same values to the FortiGate in that
+VDOM: an EVPN instance, a VXLAN interface `vxlan<vni>` sourced from the
+link port, and the service gateway address on that interface. An expected
+VNI on the service is optional and has to match the bridge domain.
+
+The lab demo stays in VDOM `root`. `fg2-local` (VNI 200) and `fg2-remote`
+(VNI 201) are two services over the same EVPN sessions, not extra BGP
+sessions or a second VDOM. The VTEP address is the `port2` link address.
+A loopback VTEP advertised on both sessions would be the production shape,
+and the prototype does not build it.
 
 ## Topology
+
+The firewalls are KVM virtual machines, not containerlab nodes:
+
+| Host | Runs |
+|------|------|
+| `100.124.186.51` (k0r4) | Containerlab (SR Linux leaves, spines, clients) and the Palo Alto VM |
+| `100.124.186.50` | FortiGate 1 and FortiGate 2 VMs |
+
+Palo Alto cables are local Linux bridges on `.51`. Each FortiGate cable
+crosses from `.51` to `.50` in a Linux VXLAN tunnel (IDs 10021 to 10024).
+That tunnel only stands in for a patch cable. It is not an EDA virtual
+network or an EVPN VNI.
 
 ```mermaid
 flowchart LR
@@ -85,25 +108,35 @@ flowchart LR
   client4 ---|eth1 / e1-6| leaf2
   leaf1 ---|e1-4 / ethernet1/1| palo[Palo Alto]
   leaf2 ---|e1-4 / ethernet1/2| palo
-  leaf1 ---|e1-5 VXLAN 10021 / port2| fg1[FortiGate 1]
-  leaf2 ---|e1-5 VXLAN 10022 / port3| fg1
-  spine1 ---|e1-3 VXLAN 10023 / port2| fg2[FortiGate 2]
-  spine2 ---|e1-3 VXLAN 10024 / port3| fg2
+  leaf1 ---|e1-5 / port2| fg1[FortiGate 1]
+  leaf2 ---|e1-5 / port3| fg1
+  spine1 ---|e1-3 / port2| fg2[FortiGate 2]
+  spine2 ---|e1-3 / port3| fg2
+  client5 ---|eth1 / e1-7| leaf1
+  client6 ---|eth1 / e1-7| leaf2
 ```
 
-Use case 1 is Palo Alto (`ethernet1/1`, `ethernet1/2`) and FortiGate 1
-(`port2`, `port3` on the leaves). Use case 2 is FortiGate 2 (`port2`,
-`port3` on the spines).
+Use case 1 is Palo Alto on `.51` (`ethernet1/1`, `ethernet1/2`) and
+FortiGate 1 on `.50` (`port2`, `port3` on the leaves). Use case 2 is
+FortiGate 2 on `.50` (`port2`, `port3` on the spines, eBGP with
+`ipv4-unicast` and `evpn`). Its clients are on leaf `e1-7` in `fg2-local`
+and `fg2-remote`.
 
 ## Resources and intents
 
-Three resources:
+Four resources:
 
 | Resource | Role |
 |----------|------|
-| Firewall | One external firewall. Vendor is `paloalto` or `fortinet`. Management is the API URL and the credential Secret. Status lists the tenants read from the firewall. A Firewall alone is monitoring only. |
+| Firewall | One external firewall. Vendor is `paloalto` or `fortinet`. Management is the API URL and the credential Secret. Status has the state, health, a health reason naming each interface that is not up, and the tenants read from the firewall. A Firewall alone is monitoring only. |
 | Firewall Interface | One NIC. Classic sets Attachment and BGP. Advanced Networking sets the spine port, BGP, families, and services. Configure Firewall on writes to the firewall; off is observe only. |
 | Firewall Report | What the collector last read and wrote. The UI does not read this object directly. |
+| Firewall Inventory | One row per firewall port or tenant, written by the collector. The Firewall Interface name and Tenant dropdowns read it. |
+
+Firewall and Firewall Interface status is in the EDA database, so EQL can
+query it, for example
+`.namespace.resources.cr.firewall_eda_labs.v1alpha1.firewall fields [ name, status.operationalState, status.health ]`.
+More queries are in [README.md](README.md).
 
 Five intents. The state scripts on Firewall and Firewall Interface do nothing, so they cannot overwrite the collector with a hardcoded Up.
 
@@ -126,8 +159,9 @@ Each poll, for each Firewall:
 3. Split Firewall Interfaces into live and deleting.
 4. Withdraw NICs recorded on a previous push and no longer live, and services a live NIC no longer lists. Remove the finalizer after that succeeds.
 5. For live NICs with Configure Firewall on: push the NIC, the eBGP neighbor, and the VXLAN services. Configure Firewall off writes nothing.
-6. Read health, interfaces, BGP state, and tenants back from the API.
+6. Read health, interfaces, BGP state, ports, and tenants back from the API.
 7. Write a Firewall Report. The report state intent publishes that onto the UI.
+8. Sync the Firewall Inventory rows (ports and tenants) for the dropdowns.
 
 The Firewall `spec.vendor` selects the API. Tenant selects where the push goes. Empty tenant is Palo Alto `vsys1` or FortiGate `root`.
 
@@ -144,11 +178,11 @@ A delete removes only a NIC the collector has recorded, on the next poll. The ph
 - Palo Alto XML API and FortiGate REST API only. No CLI, SSH, or gNMI.
 - No virtual network, VDOM, or virtual system is created. A second FortiGate
   VDOM and a second Palo Alto virtual system have to exist before a push.
-- Tenant is free text. Firewall status lists the tenants the collector
-  read, but the form has no tenant dropdown yet, and no interface dropdown
-  filtered by the chosen firewall. Both need the collector's lists to be
-  queryable from the form.
-- Firewall, Node, and Virtual Network are dropdowns.
+- Firewall, Node, and Virtual Network are dropdowns. The node Interface
+  lists that node's interfaces. After Firewall is chosen, the Firewall
+  Interface name lists its physical ports and Tenant lists its virtual
+  systems or VDOMs, from the collector's Firewall Inventory. A firewall the
+  collector has not polled yet has empty lists.
 - Allow Ping is off unless set, on both vendors. Palo Alto attaches
   management profile `eda-ping`. FortiGate adds `ping` to `allowaccess`.
   When it is off, ping does not work.

@@ -27,6 +27,9 @@ spec:
     - jsonPath: .status.health
       name: Health
       type: integer
+    - jsonPath: .status.healthReason
+      name: Health Reason
+      type: string
     - jsonPath: .status.version
       name: Version
       type: string
@@ -137,6 +140,11 @@ spec:
                 type: array
               health:
                 type: integer
+              healthReason:
+                description: |-
+                  Why health is below 100: each interface that is not up and its cause,
+                  or the API error. Empty when health is 100.
+                type: string
               interfaceCount:
                 type: integer
               lastChecked:

@@ -34,10 +34,22 @@ recorded. The physical port stays.
 
 ## Topology
 
-EDA is Talos #2, `https://100.124.186.55/`, namespace `clab-pan-d3l`.
-Containerlab runs on `nokia@100.124.186.51`. The firewalls are KVM VMs on
-`ubuntu@100.124.186.50`, not containerlab nodes. Cable source:
-`pan-d3l.clab.yml` plus the host bridges in `start-fw-vms.sh`.
+EDA is Talos #2, `https://100.124.186.55/`, namespace `clab-pan-d3l`. The
+firewalls are KVM virtual machines, not containerlab nodes and not EDA
+TopoNodes. They run on two hosts:
+
+| Host | Runs | Firewall management |
+|------|------|---------------------|
+| `nokia@100.124.186.51` (k0r4) | Containerlab: the SR Linux leaves and spines and the clients. The Palo Alto VM (QEMU/KVM, started by `start-fw-vms.sh`). | Palo Alto `https://100.124.186.51:8444` |
+| `ubuntu@100.124.186.50` | The two FortiGate VMs (KVM): FortiGate 1 and FortiGate 2. | FortiGate 1 `https://100.124.186.50:8443`, FortiGate 2 `https://100.124.186.50:8445` |
+
+Cable source: `pan-d3l.clab.yml` plus the host bridges in `start-fw-vms.sh`.
+Palo Alto is on the same host as the fabric, so its cables are local Linux
+bridges (`br-pan-inside`, `br-pan-outside`) between the leaf port and the VM
+tap. The FortiGates are on another host, so each FortiGate cable is a Linux
+VXLAN tunnel between `.51` and `.50`, IDs 10021 to 10024. That tunnel is
+only the lab's stand-in for a patch cable. It is not an EDA virtual network
+and not an EVPN VNI, and the fabric does not see it.
 
 ```mermaid
 flowchart LR
@@ -59,32 +71,37 @@ flowchart LR
   client4 ---|eth1 / e1-6| leaf2
   leaf1 ---|e1-4 / ethernet1/1| palo[Palo Alto]
   leaf2 ---|e1-4 / ethernet1/2| palo
-  leaf1 ---|e1-5 VXLAN 10021 / port2| fg1[FortiGate 1]
-  leaf2 ---|e1-5 VXLAN 10022 / port3| fg1
-  spine1 ---|e1-3 VXLAN 10023 / port2| fg2[FortiGate 2]
-  spine2 ---|e1-3 VXLAN 10024 / port3| fg2
+  leaf1 ---|e1-5 / port2| fg1[FortiGate 1]
+  leaf2 ---|e1-5 / port3| fg1
+  spine1 ---|e1-3 / port2| fg2[FortiGate 2]
+  spine2 ---|e1-3 / port3| fg2
+  client5 ---|eth1 / e1-7| leaf1
+  client6 ---|eth1 / e1-7| leaf2
 ```
 
-| Link | Fabric | Firewall or client |
+Palo Alto runs on `.51`. FortiGate 1 and FortiGate 2 run on `.50`, and
+their four cables cross hosts in host tunnels 10021 to 10024.
+
+| Link | Fabric (host tunnel for the cable) | Firewall or client |
 |------|--------|--------------------|
 | ISL | leaf1 `e1-1` — spine1 `e1-1`, leaf1 `e1-2` — spine2 `e1-1`, leaf2 `e1-1` — spine1 `e1-2`, leaf2 `e1-2` — spine2 `e1-2` | underlay eBGP, pool `ipv4-pool` `12.0.0.0/8` /31 |
 | Palo Alto inside | leaf1 `e1-4` | `ethernet1/1`. Address cleared 2026-10-05. Cable remains |
 | Palo Alto outside | leaf2 `e1-4` | `ethernet1/2`. Address cleared 2026-10-05. Cable remains |
 | client1 | leaf1 `e1-3` | `10.31.1.2/24`, gateway `10.31.1.1` |
 | client2 | leaf2 `e1-3` | `10.31.2.2/24`, gateway `10.31.2.1` |
-| FortiGate 1 inside | leaf1 `e1-5`, VXLAN VNI `10021` | `port2` `10.21.0.1/24` |
-| FortiGate 1 outside | leaf2 `e1-5`, VXLAN VNI `10022` | `port3` `10.22.0.1/24` |
+| FortiGate 1 inside | leaf1 `e1-5` (tunnel 10021) | `port2` `10.21.0.1/24` |
+| FortiGate 1 outside | leaf2 `e1-5` (tunnel 10022) | `port3` `10.22.0.1/24` |
 | client3 | leaf1 `e1-6` | `10.21.0.3/24`, gateway `10.21.0.1` |
 | client4 | leaf2 `e1-6` | `10.22.0.2/24`, gateway `10.22.0.1` |
-| FortiGate 2 underlay | spine1 `e1-3`, VXLAN VNI `10023` | `port2` `10.23.0.1/24`, fabric `10.23.0.254` |
-| FortiGate 2 underlay | spine2 `e1-3`, VXLAN VNI `10024` | `port3` `10.24.0.1/24`, fabric `10.24.0.254` |
-| FortiGate 2 clients | leaf1 and leaf2 `e1-7` | VNETs `fg2-local` VNI 208 and `fg2-remote` VNI 207 |
+| FortiGate 2 spine link | spine1 `e1-3` (tunnel 10023) | `port2` `10.23.0.1/24`, spine `10.23.0.254` |
+| FortiGate 2 spine link | spine2 `e1-3` (tunnel 10024) | `port3` `10.24.0.1/24`, spine `10.24.0.254` |
+| FortiGate 2 clients | leaf1 and leaf2 `e1-7` | virtual networks `fg2-local` (VNI 200) and `fg2-remote` (VNI 201) |
 
 | Endpoint | Role | Management |
 |----------|------|------------|
 | `palo-alto` | Leaf eBGP, one virtual system | `https://100.124.186.51:8444` |
 | `fortigate` | Leaf PE/CE. One VLAN and one eBGP session per VDOM | `https://100.124.186.50:8443` |
-| `fortigate-2` | EVPN underlay from the spines | `https://100.124.186.50:8445` |
+| `fortigate-2` | EVPN VTEP, eBGP to both spines | `https://100.124.186.50:8445` |
 
 `spec.fabric` is a dropdown of the fabrics in the namespace.
 
@@ -106,20 +123,41 @@ originate the EVPN VTEP. The cables are untagged in VDOM `root`:
 `port2` `10.21.0.1/24` and `port3` `10.22.0.1/24`, BGP AS 65201 toward
 `.254` remote AS 65001. The VLAN-per-VDOM cutover waits until VDOM 2 exists.
 
-FortiGate 2 is the EVPN firewall. The fabric underlay extends into it on
-interlinks to the spines: spine1 `e1-3` to `port2` (VXLAN VNI 10023) and
-spine2 `e1-3` to `port3` (VXLAN VNI 10024). Those are not leaf edge ports
-and they are not client gateways. Each link is an eBGP session to the spine
-with `ipv4-unicast` and `evpn`. The VTEP is on the firewall. Client VNETs
-are `fg2-local` and `fg2-remote` on leaf `e1-7`. In
-`examples/06-fortigate-2-underlay.yaml`, `port2` is the VXLAN source and
-carries both as services (`10.208.0.1/24` and `10.207.0.1/24`). `port3` is
-a second underlay session.
+FortiGate 2 is the EVPN firewall. It joins the overlay as a VTEP instead
+of hanging off a leaf edge port. Each spine has one routed link to it:
+spine1 `e1-3` to `port2` and spine2 `e1-3` to `port3`. On each link EDA
+runs an eBGP session from the spine (AS 102) to the FortiGate (AS 65202)
+with two address families:
+
+- `ipv4-unicast` carries the FortiGate link subnets, so the leaves can
+  reach its VTEP address.
+- `evpn` carries the overlay routes for the client virtual networks.
+
+The VNI belongs to EDA, not to the firewall. `fg2-local` and `fg2-remote`
+are ordinary virtual networks on leaf `e1-7`. Their bridge domains were
+given VNI 200 and 201, EVI 100 and 101, and route targets `target:1:100`
+and `target:1:101`. The FortiGate does not build anything from the EVPN
+routes it receives: a VTEP only joins an EVPN instance it is configured
+for. The collector therefore reads the VNI, EVI, and route target from each
+bridge domain and writes the matching FortiGate config in the VDOM named by
+the service tenant: `system/evpn` with that EVI and route target,
+`system/vxlan` (`vxlan200`, `vxlan201`), and the gateway address on each
+VXLAN interface (`10.200.0.1/24`, `10.201.0.1/24`). With the Push Pull
+Provider, that write becomes the push.
+
+In `examples/06-fortigate-2-underlay.yaml`, `fortigate-2-local` (`port2`
+to spine1) carries both services, and `fortigate-2-remote` (`port3` to
+spine2) is the second eBGP session. The VTEP address is the `port2` address
+(`10.23.0.1`). A loopback VTEP advertised on both sessions would remove
+that dependency on one link, but the prototype does not build it. As of
+2026-10-07 both spine sessions are Established, and the FortiGate reports
+`vxlan200` and `vxlan201` up.
 
 The FortiGate 2 lab clients (client5 `10.23.0.3/24` and client6
-`10.24.0.2/24`) still use the underlay subnets from the earlier model. The
-service subnets in the example are separate. Re-address the clients onto the
-service subnets before testing client traffic through FortiGate 2.
+`10.24.0.2/24`) still use the spine link subnets from the earlier model.
+For client traffic through FortiGate 2, re-address client5 to
+`10.200.0.3/24` (gateway `10.200.0.1`) and client6 to `10.201.0.2/24`
+(gateway `10.201.0.1`).
 
 Palo Alto leaves Advanced Networking empty. On FortiGate 1 the leaf cable
 is `dot1q`. On FortiGate 2 the spine links carry the underlay, not a client
@@ -156,6 +194,27 @@ collector writes (`health`, `bgp`, `events`, `interfaces`, and the rest).
 `kubectl` status and `fwstatus` with `FWSTATUS_STATE_DB=1` write a different
 store. They do not fill the page. Do not run that publisher from `eda-toolbox`.
 
+### Querying status with EQL
+
+Yes. The status the report state script writes is in the EDA database
+(EDB), so EQL reads it the same way the page does. Query it from the EDA
+Queries page, or with `edactl -n clab-pan-d3l query` in `eda-toolbox`:
+
+```text
+.namespace.resources.cr.firewall_eda_labs.v1alpha1.firewall fields [ name, status.operationalState, status.health, status.bgp ]
+.namespace.resources.cr.firewall_eda_labs.v1alpha1.firewallinterface fields [ name, status.operationalState, status.message, status.services ]
+.namespace.resources.cr.firewall_eda_labs.v1alpha1.firewallreport fields [ name, spec.lastChecked, spec.health ]
+.namespace.resources.cr.firewall_eda_labs.v1alpha1.firewallinventory fields [ spec.firewall, spec.type, spec.value ]
+```
+
+Add `where ( name = "fortigate-2" )` after the field list to pick one
+firewall. EQL wants `fields [ ... ]` before `where ( ... )`. The fabric
+side of the FortiGate 2 sessions is node state:
+
+```text
+.namespace.node.srl.network-instance.protocols.bgp.neighbor fields [ peer-address, peer-as, session-state ] where ( .namespace.node.name = "spine1" )
+```
+
 The State Engine cannot call the firewall HTTPS API. The collector does.
 It runs as Deployment `eda-fwstatus` in `eda-system`. Installing the app
 does not start that Deployment. `spec.configureFirewall` on an interface
@@ -171,12 +230,22 @@ enum. `fwstatus` computes it from the API:
 | Rollup | Health | When |
 |--------|--------|------|
 | `Up` | 100 | API login succeeded and every configured NIC is up |
-| `Degraded` | 80 | API ok, and a NIC is up but its BGP session is not |
+| `Degraded` | 80 | API ok, and a NIC is up but degraded: its BGP session is not Established, or its address or zone does not match |
 | `Degraded` | 70 | API ok, and at least one NIC is down |
 | `Degraded` | 40 | API login failed |
 | `Degraded` | 50 | The API was attempted without credentials |
 | `Down` | 0 | API unreachable |
 | `Unknown` | 0 | No credentials, or the NIC was missing from the API response |
+
+EDA cannot show a tooltip on a list cell, so the Firewalls list explains
+health in place:
+
+- **Health** shows the value with its meaning from the table above, for
+  example `80 · interface degraded`.
+- **Health Reason** (`status.healthReason`) is the live cause from the last
+  poll. Each interface that is not up is listed with its cause, for example
+  `port2: BGP 10.21.0.254 Active; port3: BGP 10.22.0.254 Active`. Below 50
+  it is the API error. It is empty at 100.
 
 A NIC `operationalState` is `Up`, `Down`, `Degraded`, or `Unknown`. The port
 state comes from the vendor API. When that FirewallInterface has BGP, `Up`
@@ -198,11 +267,15 @@ state name. `Established` is the up session. The other names those APIs
 return are `Idle`, `Connect`, `Active`, `OpenSent`, and `OpenConfirm`.
 
 Published in `dtrichards01/private-catalog-eda` as
-`ghcr.io/dtrichards01/private-eda-registry/firewall:v1.3.0`.
-The collector image is `ghcr.io/dtrichards01/private-eda-registry/fwstatus:v1.3.0`.
+`ghcr.io/dtrichards01/private-eda-registry/firewall:v1.3.3`.
+The collector image is `ghcr.io/dtrichards01/private-eda-registry/fwstatus:v1.3.3`.
 The UI category is **Firewalls**. Firewall, Node, and Virtual Network are
 dropdowns. Interface under Attachment or Advanced Networking lists the
-interfaces of the selected node.
+interfaces of the selected node. Once Firewall is set, the Firewall
+Interface name lists that firewall's physical ports and Tenant lists its
+virtual systems or VDOMs. Both lists come from `FirewallInventory` rows the
+collector writes, one row per port or tenant, because EDA autocomplete
+returns one value per row and cannot read a list inside one object.
 
 On 2026-10-05 the Palo Alto Firewall Interfaces were deleted in EDA before
 the collector had recorded the push, so the box kept `10.31.1.1/24`,

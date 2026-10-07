@@ -59,6 +59,8 @@ spec:
                 type: string
               health:
                 type: integer
+              healthReason:
+                type: string
               interfaceCount:
                 type: integer
               interfaces:

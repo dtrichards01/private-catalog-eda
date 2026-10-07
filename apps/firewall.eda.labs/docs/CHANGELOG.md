@@ -1,5 +1,21 @@
 # Changelog
 
+## v1.3.3
+
+- Firewall status `healthReason`: each interface that is not up and its cause (for example `port2: BGP 10.21.0.254 Active`), or the API error. Shown as the Health Reason column
+- Health shows its meaning from the States table (`80 · interface degraded`, `70 · interface down`, and so on). EDA has no list-cell tooltip
+- BGP detail on an interface names the neighbor
+- Topology docs: Palo Alto runs on `.51`, both FortiGates on `.50`. VXLAN 10021 to 10024 are host tunnels for the cables, not EVPN VNIs. FortiGate 2 section rewritten around eBGP `evpn` from the spines and the VNI owned by the EDA virtual network. EQL queries for firewall status
+
+## v1.3.1 (collector v1.3.2)
+
+- New kind Firewall Inventory: one row per firewall port or tenant, written by the collector. The Firewall Interface name, Tenant, and service Tenant autocomplete from it once Firewall is set
+- Node Interface autocomplete uses an EQL `query` on `.namespace.node.srl.interface`. The previous `eql` template was sent to EDA unexpanded
+- Intent runtime passes `eda.Schema` to `eda.update_cr`. Advanced Networking spine objects were not emitted before this
+- FortiGate BGP session mode comes from the local and remote AS instead of always `ibgp`
+- Collector v1.3.2: the report write no longer panics on integer service fields (VNI, EVI). v1.3.0 and v1.3.1 stopped after the first firewall once FortiGate 2 had services
+- Collector needs `firewallinventories` get, list, create, delete
+
 ## v1.3.0
 
 - Firewall is vendor, fabric, and management only. `spec.peering` is removed; BGP and tenants are on the Firewall Interface
