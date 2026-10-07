@@ -57,36 +57,129 @@ spec:
           spec:
             description: |-
               FirewallInterfaceSpec is one NIC on an external firewall.
-              Create one of these to add an interface. When attachment is set, the
-              config intent also creates the leaf Interface that faces this NIC.
+              Classic: Attachment is the leaf edge port in a virtual network you build,
+              and BGP is the eBGP neighbor on that network. Advanced Networking: the
+              NIC is a FortiGate underlay port to a spine, and the app builds the spine
+              default interface and default BGP. Set one of Attachment or Advanced.
             properties:
               address:
-                description: IPv4 address and prefix, for example 10.31.1.1/24.
+                description: |-
+                  IPv4 address and prefix, for example 10.31.1.1/24. The fabric gateway
+                  is .254 in this subnet, or .253 when the firewall is .254.
                 type: string
               advanced:
-                description: EVPN VXLAN for a FortiGate service VDOM. Leave empty
-                  for Palo Alto.
+                description: |-
+                  FortiGate underlay to a spine. Builds the spine default interface, EVPN
+                  policy, default BGP group, and default BGP peer, and pushes the VXLAN
+                  services to the FortiGate. Leave empty for classic.
                 properties:
+                  bgp:
+                    description: eBGP between the spine and the FortiGate.
+                    properties:
+                      families:
+                        default:
+                        - ipv4-unicast
+                        - evpn
+                        description: ipv4-unicast carries the VTEP address. evpn carries
+                          the services.
+                        items:
+                          type: string
+                        type: array
+                      localAS:
+                        description: Spine AS. The FortiGate writes this as the remote
+                          AS.
+                        format: int32
+                        type: integer
+                      peerAS:
+                        description: FortiGate AS.
+                        format: int32
+                        type: integer
+                    required:
+                    - localAS
+                    - peerAS
+                    type: object
+                  encapType:
+                    default: "Null"
+                    description: Null is untagged. dot1q puts the spine default interface
+                      on a VLAN.
+                    enum:
+                    - "Null"
+                    - dot1q
+                    type: string
+                  interface:
+                    description: Interface on the selected spine. Shown after the
+                      node is chosen.
+                    type: string
+                  node:
+                    description: Spine this NIC is cabled to.
+                    type: string
+                  services:
+                    description: |-
+                      Client services carried over this underlay as VXLAN. Each service is
+                      one bridge domain mapped to one FortiGate VXLAN interface.
+                    items:
+                      description: AdvancedServiceSpec maps one client virtual network
+                        to the FortiGate.
+                      properties:
+                        address:
+                          description: FortiGate address on this service, for example
+                            10.208.0.1/24.
+                          type: string
+                        allowPing:
+                          description: Allow ping on the service VXLAN interface.
+                          type: boolean
+                        bridgeDomain:
+                          description: Bridge domain in that virtual network. Empty
+                            uses its only bridge domain.
+                          type: string
+                        tenant:
+                          description: |-
+                            FortiGate VDOM for this service. Empty uses root. This lab FortiGate
+                            has only root, so the service is in the same VDOM as this NIC.
+                          type: string
+                        virtualNetwork:
+                          description: |-
+                            Client virtual network. Its bridge domain supplies the VNI, EVI, and
+                            route target pushed to the FortiGate.
+                          type: string
+                        vni:
+                          description: |-
+                            Expected VNI. Empty reads it from the bridge domain. When set, it has
+                            to match the bridge domain.
+                          format: int32
+                          type: integer
+                      required:
+                      - address
+                      - virtualNetwork
+                      type: object
+                    type: array
                   underlay:
+                    default: evpn-vxlan
                     enum:
                     - evpn-vxlan
                     type: string
-                  vni:
-                    description: Bridge-domain VNI. The leaf cable stays untagged.
+                  vlanID:
+                    description: Required when encapsulation is dot1q.
                     format: int32
+                    maximum: 4094
+                    minimum: 1
                     type: integer
+                required:
+                - bgp
+                - interface
+                - node
                 type: object
               allowPing:
-                type: boolean
-              configureFirewall:
-                description: Push address, zone, admin state, and ping to this NIC
-                  through the firewall API. Palo Alto uses its XML API. Fortinet
-                  uses its REST API. Leave this off to only create the Nokia leaf
-                  attachment.
+                description: |-
+                  Allow ping on this NIC. Off unless set. Palo Alto attaches management
+                  profile eda-ping. FortiGate adds ping to the interface allowaccess.
+                  When off, ping is removed and the NIC does not answer ping.
                 type: boolean
               attachment:
-                description: Fabric port this NIC is cabled to. Omit until the cable
-                  exists.
+                description: |-
+                  Classic interconnect. Leaf edge port in an existing virtual network.
+                  The virtual network owns the edge port, router, IRB or routed interface,
+                  and BGP peer. Leave empty for Advanced Networking.
                 properties:
                   encapType:
                     default: "Null"
@@ -97,14 +190,18 @@ spec:
                     - dot1q
                     type: string
                   interface:
-                    description: Interface on the selected node. A slash, such as
-                      ethernet-1/4, is stored as ethernet-1-4.
+                    description: |-
+                      Interface on the selected node. Shown after the node is chosen.
+                      A slash from the node, such as ethernet-1/4, is stored as ethernet-1-4.
                     type: string
                   node:
-                    description: Node this cable attaches to.
+                    description: Node this cable attaches to. The list is the nodes
+                      in the namespace.
                     type: string
                   virtualNetwork:
-                    description: Virtual network in this namespace.
+                    description: |-
+                      Existing virtual network in this namespace. The list shows the virtual
+                      networks that already exist. This app does not create one.
                     type: string
                   vlanID:
                     description: Required when encapsulation is dot1q.
@@ -117,28 +214,40 @@ spec:
                 type: object
               bgp:
                 description: |-
-                  Palo Alto eBGP to the virtual network, or FortiGate eBGP to the leaf.
-                  A FortiGate service VDOM uses iBGP. That session is paired with Advanced Networking.
+                  Classic eBGP neighbor written to the firewall in the selected tenant.
+                  Advanced Networking has its own BGP.
                 properties:
                   localAS:
+                    description: Fabric AS. The firewall writes this as the peer AS.
                     format: int32
                     type: integer
                   mode:
+                    default: ebgp
                     enum:
                     - ebgp
-                    - ibgp
                     type: string
                   peerAS:
+                    description: Firewall AS. The firewall writes this as its local
+                      AS.
                     format: int32
                     type: integer
                 required:
-                - mode
+                - localAS
+                - peerAS
                 type: object
+              configureFirewall:
+                description: |-
+                  On: the collector writes this NIC, its BGP neighbor, and any Advanced
+                  Networking services through the firewall API, and removes them when
+                  this interface is deleted. Off: observe only. The collector reports
+                  port and BGP state and writes nothing to the firewall.
+                type: boolean
               enabled:
                 default: true
                 type: boolean
               firewall:
-                description: Firewall resource name in the same namespace.
+                description: Firewall in this namespace. Vendor on that Firewall selects
+                  the API.
                 type: string
               name:
                 description: 'Device interface name: ethernet1/1 on Palo Alto, port2
@@ -150,13 +259,14 @@ spec:
                 - outside
                 type: string
               tenant:
-                description: FortiGate VDOM or Palo Alto virtual system named on the
-                  parent firewall.
+                description: |-
+                  Palo Alto virtual system or FortiGate VDOM for this NIC. Empty uses
+                  vsys1 or root. Status on the Firewall lists the tenants it has.
                 type: string
               vlanID:
-                description: VLAN tag pushed to this firewall NIC. Empty leaves the
-                  port untagged. Palo Alto creates a subinterface. FortiGate creates
-                  a VLAN interface on this port.
+                description: |-
+                  VLAN tag pushed to this firewall NIC. Empty leaves the port untagged.
+                  Palo Alto creates a subinterface. FortiGate creates a VLAN interface on this port.
                 format: int32
                 maximum: 4094
                 minimum: 1
@@ -164,6 +274,7 @@ spec:
               zone:
                 type: string
             required:
+            - address
             - firewall
             - name
             - side
@@ -182,7 +293,33 @@ spec:
               observedAddress:
                 type: string
               operationalState:
+                description: Up when the port is up. When this interface has BGP,
+                  Up also requires that session to be established.
                 type: string
+              services:
+                description: Advanced Networking services as resolved from the bridge
+                  domain.
+                items:
+                  description: ServiceStatus is one Advanced Networking service on
+                    the FortiGate.
+                  properties:
+                    bridgeDomain:
+                      type: string
+                    evi:
+                      type: integer
+                    interface:
+                      description: FortiGate VXLAN interface for this service.
+                      type: string
+                    message:
+                      type: string
+                    routeTarget:
+                      type: string
+                    virtualNetwork:
+                      type: string
+                    vni:
+                      type: integer
+                  type: object
+                type: array
               virtualNetwork:
                 type: string
               zone:

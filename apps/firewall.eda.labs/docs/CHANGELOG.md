@@ -1,5 +1,16 @@
 # Changelog
 
+## v1.3.0
+
+- Firewall is vendor, fabric, and management only. `spec.peering` is removed; BGP and tenants are on the Firewall Interface
+- Firewall status lists tenants read from the firewall (Palo Alto vsys, FortiGate VDOM)
+- Firewall Interface: Firewall is a dropdown, Address is required, Allow Ping covers both vendors
+- Configure Firewall off is observe only. The collector no longer pushes BGP for those interfaces
+- Classic BGP is eBGP only. Advanced Networking has its own spine node, interface, encapsulation, VLAN, BGP, and address families (`ipv4-unicast`, `evpn`)
+- Advanced Networking services: tenant plus client virtual network. The collector reads VNI, EVI, and route target from the bridge domain and pushes the FortiGate EVPN instance, VXLAN interface, and address. A service removed from the list is withdrawn
+- With `ipv4-unicast`, the FortiGate advertises the underlay subnet so the leaves reach its VTEP
+- Collector needs read access to `bridgedomains.services.eda.nokia.com`
+
 ## v1.2.10
 
 - Summary explains each resource and intent, and how the collector uses the Palo Alto XML API and the FortiGate REST API

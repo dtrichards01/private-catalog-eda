@@ -57,7 +57,8 @@ spec:
           spec:
             description: |-
               FirewallSpec is an external firewall endpoint. It is not a TopoNode.
-              The fabric attaches to it through FirewallInterface resources.
+              The fabric attaches to it through FirewallInterface resources. Addresses,
+              tenants, and BGP are set on each Firewall Interface.
             properties:
               description:
                 type: string
@@ -86,71 +87,6 @@ spec:
                     type: string
                 required:
                 - url
-                type: object
-              peering:
-                description: |-
-                  How this firewall joins the fabric. Palo Alto uses eBGP to a virtual network.
-                  FortiGate VDOM 1 can use VLAN eBGP to a leaf. VDOM 2 uses EVPN in Advanced Networking.
-                properties:
-                  tenants:
-                    description: |-
-                      Tenants on this firewall. Palo Alto: a virtual system. FortiGate: a VDOM.
-                      This FortiGate license allows two VDOMs.
-                    items:
-                      description: TenantSpec is one Palo Alto virtual system or one
-                        FortiGate VDOM.
-                      properties:
-                        localAS:
-                          description: AS EDA uses on this session. The fabric overlay
-                            is 65001.
-                          format: int32
-                          type: integer
-                        mode:
-                          description: |-
-                            ebgp for a Palo Alto virtual system or a FortiGate edge VDOM.
-                            ibgp for a FortiGate service VDOM on EVPN.
-                          enum:
-                          - ebgp
-                          - ibgp
-                          type: string
-                        name:
-                          type: string
-                        peerAS:
-                          description: AS of the firewall tenant. iBGP uses the same
-                            AS as Local AS.
-                          format: int32
-                          type: integer
-                        routeHandoff:
-                          default: clients-use-firewall
-                          description: |-
-                            Who installs the path between the clients and the firewall.
-                            clients-use-firewall keeps the firewall as the client gateway.
-                            firewall-originates-default advertises 0.0.0.0/0 from the firewall.
-                            fabric-static-to-firewall installs a static on the virtual network toward the firewall.
-                          enum:
-                          - clients-use-firewall
-                          - firewall-originates-default
-                          - fabric-static-to-firewall
-                          type: string
-                        virtualNetworks:
-                          description: |-
-                            Virtual networks that eBGP with this Palo Alto tenant.
-                            A FortiGate edge VDOM leaves this empty and peers to the leaf.
-                          items:
-                            type: string
-                          type: array
-                      required:
-                      - mode
-                      - name
-                      type: object
-                    maxItems: 2
-                    type: array
-                  underlay:
-                    description: evpn-vxlan is the FortiGate service underlay. Leave
-                      empty for Palo Alto.
-                    enum:
-                    - evpn-vxlan
-                    type: string
                 type: object
               vendor:
                 enum:
@@ -231,6 +167,8 @@ spec:
                     observedAddress:
                       type: string
                     operationalState:
+                      description: Same icon as the firewall list. Includes BGP when
+                        the NIC specifies it.
                       type: string
                     side:
                       type: string
@@ -243,12 +181,19 @@ spec:
                   type: object
                 type: array
               operationalState:
-                description: Up, Down, Degraded, or Unknown.
+                description: Up when every NIC is up. A NIC with BGP is Up only when
+                  that session is established.
                 type: string
               reachable:
                 type: boolean
               serial:
                 type: string
+              tenants:
+                description: Virtual systems on Palo Alto or VDOMs on FortiGate, read
+                  on the last poll.
+                items:
+                  type: string
+                type: array
               vendor:
                 type: string
               version:

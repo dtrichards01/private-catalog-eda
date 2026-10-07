@@ -78,10 +78,33 @@ spec:
                       type: string
                     operationalState:
                       type: string
+                    services:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          bridgeDomain:
+                            type: string
+                          evi:
+                            type: integer
+                          interface:
+                            type: string
+                          message:
+                            type: string
+                          routeTarget:
+                            type: string
+                          virtualNetwork:
+                            type: string
+                          vni:
+                            type: integer
                     virtualNetwork:
                       type: string
                     zone:
                       type: string
+              tenants:
+                type: array
+                items:
+                  type: string
               lastChecked:
                 type: string
               license:

@@ -7,24 +7,27 @@ The resource intents and the collector's Palo Alto and FortiGate API path are in
 Palo Alto and FortiGate are not TopoNodes. Each firewall is a `Firewall`
 resource. Each NIC is a `FirewallInterface`.
 
-A Firewall on its own is monitoring only. The collector polls it and does
-not write address, VLAN, zone, or BGP. A Firewall Interface pushes that NIC
-when Configure Firewall is set, and pushes eBGP when BGP mode is `ebgp`.
-The Firewall Vendor selects Palo Alto or FortiGate. Tenant selects the
-virtual system or VDOM. Empty uses `vsys1` or `root`.
+The Firewall resource is vendor, fabric, and management only. A Firewall
+on its own is monitoring only. The collector polls it and does not write
+address, VLAN, zone, or BGP. With Configure Firewall on, a Firewall
+Interface pushes that NIC, its eBGP neighbor, and any Advanced Networking
+services. With it off, the interface is observe only. The Firewall Vendor
+selects Palo Alto or FortiGate. Tenant selects the virtual system or VDOM.
+Empty uses `vsys1` or `root`.
 
-Palo Alto and Fortinet-1 fabric objects, the edge port, the router, and the
-BGP peer, belong on the virtual network. The app does not emit them.
-Advanced Networking on Fortinet-2 emits the default interface, EVPN policy,
-default BGP group, and default BGP peer. It does not emit a default router
-or the spine interface.
+A classic interface sets Attachment and BGP. Palo Alto and Fortinet-1 fabric
+objects, the edge port, the router, and the BGP peer, belong on the virtual
+network. The app does not emit them. Advanced Networking on Fortinet-2 has
+its own spine port, BGP, address families, and services. It emits the
+default interface, address family policy, default BGP group, and default
+BGP peer. It does not emit a default router or the spine interface.
 
 VLAN on the Firewall Interface (`spec.vlanID`) is pushed to the firewall.
 Empty leaves the port untagged. Palo Alto creates `ethernet1/1.<vlan>`.
-FortiGate creates `port2.<vlan>` on that port. Allow Ping is off unless set.
-On Palo Alto it attaches management profile `eda-ping`, and that NIC answers
-ping. When Allow Ping is off, the profile is not attached and ping does not
-work. Deleting the Firewall Interface removes
+FortiGate creates `port2.<vlan>` on that port. Allow Ping is off unless set,
+on both vendors. Palo Alto attaches management profile `eda-ping`. FortiGate
+adds `ping` to `allowaccess`. When Allow Ping is off, ping does not work.
+Deleting the Firewall Interface removes
 the pushed address, VLAN interface, zone, BGP neighbor, and `eda-ping` when
 nothing else uses that profile. The collector can remove only a NIC it has
 recorded. The physical port stays.
@@ -86,19 +89,13 @@ flowchart LR
 `spec.fabric` is a dropdown of the fabrics in the namespace.
 
 Each interface sets `spec.tenant`. Palo Alto uses a virtual system (`vsys1`).
-FortiGate uses a VDOM. Both FortiGates are in `multi-vdom` mode. The license
-on each allows two VDOMs (`used` 1, `max` 2). Only `root` exists. Creating
-`service` returned CMDB error -4, maximum number of entries, so VDOM 2 is
-not on the box yet.
+FortiGate uses a VDOM. Firewall status lists the tenants the collector read.
+Both FortiGates are in `multi-vdom` mode. The license on each allows two
+VDOMs (`used` 1, `max` 2). Only `root` exists. Creating `service` returned
+CMDB error -4, maximum number of entries, so VDOM 2 is not on the box yet.
 
-Each tenant has one route handoff. `clients-use-firewall` is the lab default:
-clients gateway to the firewall and no default route is advertised.
-`firewall-originates-default` tells the firewall BGP session to advertise
-`0.0.0.0/0`. `fabric-static-to-firewall` is the fabric static toward the
-firewall address. Only one of those is selected.
-
-Palo Alto tenants use eBGP to a virtual network. The fabric gateway on each
-network is `.254`.
+Clients gateway to the firewall and no default route is advertised. The
+fabric gateway on each network is `.254`.
 
 The two FortiGates are not the same role.
 
@@ -112,14 +109,21 @@ originate the EVPN VTEP. The cables are untagged in VDOM `root`:
 FortiGate 2 is the EVPN firewall. The fabric underlay extends into it on
 interlinks to the spines: spine1 `e1-3` to `port2` (VXLAN VNI 10023) and
 spine2 `e1-3` to `port3` (VXLAN VNI 10024). Those are not leaf edge ports
-and they are not client gateways. iBGP to the spine route reflectors and
-the VTEP belong on this firewall. Client VNETs are `fg2-local` and
-`fg2-remote` on leaf `e1-7`. The spine links are the underlay.
+and they are not client gateways. Each link is an eBGP session to the spine
+with `ipv4-unicast` and `evpn`. The VTEP is on the firewall. Client VNETs
+are `fg2-local` and `fg2-remote` on leaf `e1-7`. In
+`examples/06-fortigate-2-underlay.yaml`, `port2` is the VXLAN source and
+carries both as services (`10.208.0.1/24` and `10.207.0.1/24`). `port3` is
+a second underlay session.
 
-Palo Alto leaves Advanced Networking empty. A FortiGate EVPN VDOM uses
-**Advanced Networking** (`underlay: evpn-vxlan`). On FortiGate 1 the leaf
-cable is `dot1q`. On FortiGate 2 the spine links carry the underlay, not a
-client VLAN.
+The FortiGate 2 lab clients (client5 `10.23.0.3/24` and client6
+`10.24.0.2/24`) still use the underlay subnets from the earlier model. The
+service subnets in the example are separate. Re-address the clients onto the
+service subnets before testing client traffic through FortiGate 2.
+
+Palo Alto leaves Advanced Networking empty. On FortiGate 1 the leaf cable
+is `dot1q`. On FortiGate 2 the spine links carry the underlay, not a client
+VLAN.
 
 Credentials stay in Secrets (`username`, `password`). Examples use `replace-me`.
 
@@ -155,8 +159,9 @@ store. They do not fill the page. Do not run that publisher from `eda-toolbox`.
 The State Engine cannot call the firewall HTTPS API. The collector does.
 It runs as Deployment `eda-fwstatus` in `eda-system`. Installing the app
 does not start that Deployment. `spec.configureFirewall` on an interface
-pushes that NIC, including `spec.vlanID`, through the vendor API. BGP mode
-`ebgp` pushes the neighbor. Fabric AS is the peer AS on the firewall. Firewall AS is the firewall local AS. The collector does not originate a default route. The Virtual Network field lists virtual networks that already exist in the namespace. It does not create one.
+pushes that NIC, including `spec.vlanID`, its eBGP neighbor, and any
+Advanced Networking services through the vendor API. Off is observe only.
+Fabric AS is the peer AS on the firewall. Firewall AS is the firewall local AS. The collector does not originate a default route. The Virtual Network field lists virtual networks that already exist in the namespace. It does not create one.
 
 ## States
 
@@ -193,10 +198,10 @@ state name. `Established` is the up session. The other names those APIs
 return are `Idle`, `Connect`, `Active`, `OpenSent`, and `OpenConfirm`.
 
 Published in `dtrichards01/private-catalog-eda` as
-`ghcr.io/dtrichards01/private-eda-registry/firewall:v1.2.10`.
-The collector image stays `ghcr.io/dtrichards01/private-eda-registry/fwstatus:v1.2.8`.
-The UI category is **Firewalls**. There is no Bridge field. Node and
-Interface on an attachment are pickers: the interface list is the
+`ghcr.io/dtrichards01/private-eda-registry/firewall:v1.3.0`.
+The collector image is `ghcr.io/dtrichards01/private-eda-registry/fwstatus:v1.3.0`.
+The UI category is **Firewalls**. Firewall, Node, and Virtual Network are
+dropdowns. Interface under Attachment or Advanced Networking lists the
 interfaces of the selected node.
 
 On 2026-10-05 the Palo Alto Firewall Interfaces were deleted in EDA before
