@@ -153,11 +153,16 @@ that dependency on one link, but the prototype does not build it. As of
 2026-10-07 both spine sessions are Established, and the FortiGate reports
 `vxlan200` and `vxlan201` up.
 
-The FortiGate 2 lab clients (client5 `10.23.0.3/24` and client6
-`10.24.0.2/24`) still use the spine link subnets from the earlier model.
-For client traffic through FortiGate 2, re-address client5 to
-`10.200.0.3/24` (gateway `10.200.0.1`) and client6 to `10.201.0.2/24`
-(gateway `10.201.0.1`).
+The FortiGate 2 lab clients are client5 `10.200.0.3/24` (gateway
+`10.200.0.1`) and client6 `10.201.0.2/24` (gateway `10.201.0.1`), set in
+`start-fw-vms.sh`. As of 2026-10-07 they cannot reach the gateways. EVPN
+control plane is up: the leaves list FortiGate 2 (`10.23.0.1`) as the remote
+VTEP for VNI 200 and 201. But both leaves route to `10.23.0.0/24` through
+spine2, because FortiGate 2 advertises that subnet on both sessions. The
+VXLAN packets therefore arrive on `port3`, while `vxlan200` and `vxlan201`
+are bound to `port2`, and FortiGate 2 drops them. The fix is a VTEP address
+that is valid on both links (a loopback advertised to both spines), or
+advertising `10.23.0.0/24` only to spine1.
 
 Palo Alto leaves Advanced Networking empty. On FortiGate 1 the leaf cable
 is `dot1q`. On FortiGate 2 the spine links carry the underlay, not a client

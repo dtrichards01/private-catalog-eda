@@ -40,3 +40,10 @@ spec:
                 - tenant
               value:
                 type: string
+          status:
+            type: object
+            properties:
+              message:
+                type: string
+    subresources:
+      status: {}
