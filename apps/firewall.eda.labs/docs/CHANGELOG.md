@@ -1,5 +1,19 @@
 # Changelog
 
+## v1.3.6
+
+- Docs only: FortiGate 1 untagged leaf cable, the FortiGate 2 loopback VTEP, the missing-status OpenAPI failure, and the Palo Alto interfaces recreated observe only. The collector is rebuilt from the same code under a new tag
+
+## v1.3.5
+
+- Firewall Inventory has a `status` object. Without it, EDA could not generate the app OpenAPI (`did not find status ... kind FirewallInventory`), `GET /openapi/v3/apps/firewall.eda.labs/v1alpha1` returned 500, and the Firewalls category vanished from the UI in v1.3.3
+- Collector: an Advanced Networking interface with a VTEP address gets FortiGate loopback `eda-vtep` (`/32`, ping) in its VDOM. Its VXLAN services are sourced from that loopback, and the `/32` is advertised in BGP instead of the link subnet. Removing the VTEP deletes the loopback. The Firewall Interface field `advanced.vtepAddress` is not in the schema yet, so this is inactive
+- Firewall Interface intent rejects a VTEP address that is not an IPv4 `/32`, or that is set without `ipv4-unicast`
+
+## v1.3.4 (collector only)
+
+- FortiGate interface zone is read from the `zone` field only. Role (`lan`) is not a zone, and comparing it against the spec zone marked interfaces Degraded
+
 ## v1.3.3
 
 - Firewall status `healthReason`: each interface that is not up and its cause (for example `port2: BGP 10.21.0.254 Active`), or the API error. Shown as the Health Reason column

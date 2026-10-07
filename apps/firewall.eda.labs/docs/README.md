@@ -85,8 +85,8 @@ their four cables cross hosts in host tunnels 10021 to 10024.
 | Link | Fabric (host tunnel for the cable) | Firewall or client |
 |------|--------|--------------------|
 | ISL | leaf1 `e1-1` — spine1 `e1-1`, leaf1 `e1-2` — spine2 `e1-1`, leaf2 `e1-1` — spine1 `e1-2`, leaf2 `e1-2` — spine2 `e1-2` | underlay eBGP, pool `ipv4-pool` `12.0.0.0/8` /31 |
-| Palo Alto inside | leaf1 `e1-4` | `ethernet1/1`. Address cleared 2026-10-05. Cable remains |
-| Palo Alto outside | leaf2 `e1-4` | `ethernet1/2`. Address cleared 2026-10-05. Cable remains |
+| Palo Alto inside | leaf1 `e1-4` | `ethernet1/1`, `10.31.1.1/24` in the Firewall Interface. Not on the box: observe only since 2026-10-07 |
+| Palo Alto outside | leaf2 `e1-4` | `ethernet1/2`, `10.31.2.1/24` in the Firewall Interface. Not on the box: observe only since 2026-10-07 |
 | client1 | leaf1 `e1-3` | `10.31.1.2/24`, gateway `10.31.1.1` |
 | client2 | leaf2 `e1-3` | `10.31.2.2/24`, gateway `10.31.2.1` |
 | FortiGate 1 inside | leaf1 `e1-5` (tunnel 10021) | `port2` `10.21.0.1/24` |
@@ -123,6 +123,16 @@ originate the EVPN VTEP. The cables are untagged in VDOM `root`:
 `port2` `10.21.0.1/24` and `port3` `10.22.0.1/24`, BGP AS 65201 toward
 `.254` remote AS 65001. The VLAN-per-VDOM cutover waits until VDOM 2 exists.
 
+Until then everything on that cable is untagged. In `pan-d3l-vnets.yaml`,
+`fg-inside` and `fg-outside` use VLAN `null`, and the EDA Interfaces
+`leaf1-ethernet-1-5` and `leaf2-ethernet-1-5` are `encapType: Null`. A
+`Dot1q` leaf interface rejects the untagged subinterface (`vlan tagging
+true inconsistent with subinterface 4097`), and the virtual network
+transaction fails on every retry. As of 2026-10-07 the `fg-inside` and
+`fg-outside` bridge domains (VNI 204 and 203) are Up and both FortiGate 1
+sessions are Established. Both virtual networks still report Degraded with
+no peers or interfaces down. That is not explained yet.
+
 FortiGate 2 is the EVPN firewall. It joins the overlay as a VTEP instead
 of hanging off a leaf edge port. Each spine has one routed link to it:
 spine1 `e1-3` to `port2` and spine2 `e1-3` to `port3`. On each link EDA
@@ -147,11 +157,9 @@ Provider, that write becomes the push.
 
 In `examples/06-fortigate-2-underlay.yaml`, `fortigate-2-local` (`port2`
 to spine1) carries both services, and `fortigate-2-remote` (`port3` to
-spine2) is the second eBGP session. The VTEP address is the `port2` address
-(`10.23.0.1`). A loopback VTEP advertised on both sessions would remove
-that dependency on one link, but the prototype does not build it. As of
-2026-10-07 both spine sessions are Established, and the FortiGate reports
-`vxlan200` and `vxlan201` up.
+spine2) is the second eBGP session. Today the VTEP address is the `port2`
+address (`10.23.0.1`). As of 2026-10-07 both spine sessions are Established,
+and the FortiGate reports `vxlan200` and `vxlan201` up.
 
 The FortiGate 2 lab clients are client5 `10.200.0.3/24` (gateway
 `10.200.0.1`) and client6 `10.201.0.2/24` (gateway `10.201.0.1`), set in
@@ -160,13 +168,22 @@ control plane is up: the leaves list FortiGate 2 (`10.23.0.1`) as the remote
 VTEP for VNI 200 and 201. But both leaves route to `10.23.0.0/24` through
 spine2, because FortiGate 2 advertises that subnet on both sessions. The
 VXLAN packets therefore arrive on `port3`, while `vxlan200` and `vxlan201`
-are bound to `port2`, and FortiGate 2 drops them. The fix is a VTEP address
-that is valid on both links (a loopback advertised to both spines), or
-advertising `10.23.0.0/24` only to spine1.
+are bound to `port2`, and FortiGate 2 drops them.
 
-Palo Alto leaves Advanced Networking empty. On FortiGate 1 the leaf cable
-is `dot1q`. On FortiGate 2 the spine links carry the underlay, not a client
-VLAN.
+The chosen fix is a loopback VTEP. With `advanced.vtepAddress` set
+(`10.252.0.2/32` on `fortigate-2-local` in example 06), the collector
+creates loopback `eda-vtep` in the VDOM, sources `vxlan200` and `vxlan201`
+from it, and advertises the `/32` instead of `10.23.0.0/24`. The loopback
+is reachable on either spine link, so it does not matter which spine the
+leaves pick. The collector has this code since v1.3.5. The schema field is not
+published yet, so the loopback is not on the box and the clients still
+cannot reach their gateways. Client-to-client traffic also needs a FortiGate
+policy between `vxlan200` and `vxlan201`. The existing policies are
+`port2` to `port3` only.
+
+Palo Alto leaves Advanced Networking empty. The FortiGate 1 leaf cable is
+untagged until the VLAN-per-VDOM cutover. On FortiGate 2 the spine links
+carry the underlay, not a client VLAN.
 
 Credentials stay in Secrets (`username`, `password`). Examples use `replace-me`.
 
@@ -190,9 +207,12 @@ eda.update_cr(
 
 `eda.Schema` is required. The Firewall and FirewallInterface state scripts
 do not publish a hardcoded `Up`. Every kind in the app, including
-`FirewallReport`, needs a `status` object in its OpenAPI schema. Without
-that, `GET /openapi/v3/apps/firewall.eda.labs/v1alpha1` returns 500 and the
-Firewalls page lists nothing. The report spec must name every field the
+`FirewallReport` and `FirewallInventory`, needs a `status` object in its
+OpenAPI schema. Without that, `GET /openapi/v3/apps/firewall.eda.labs/v1alpha1`
+returns 500 (`OpenApiGenFailed`, `did not find status for ... kind <Kind>`),
+and the UI drops the whole Firewalls category. The data API still answers,
+so `kubectl` and EQL look fine. v1.3.3 shipped Firewall Inventory without
+`status` and hit this. v1.3.5 fixes it. The report spec must name every field the
 collector writes (`health`, `bgp`, `events`, `interfaces`, and the rest).
 `x-kubernetes-preserve-unknown-fields` does not satisfy the state controller.
 
@@ -272,8 +292,8 @@ state name. `Established` is the up session. The other names those APIs
 return are `Idle`, `Connect`, `Active`, `OpenSent`, and `OpenConfirm`.
 
 Published in `dtrichards01/private-catalog-eda` as
-`ghcr.io/dtrichards01/private-eda-registry/firewall:v1.3.3`.
-The collector image is `ghcr.io/dtrichards01/private-eda-registry/fwstatus:v1.3.3`.
+`ghcr.io/dtrichards01/private-eda-registry/firewall:v1.3.6`.
+The collector image is `ghcr.io/dtrichards01/private-eda-registry/fwstatus:v1.3.6`.
 The UI category is **Firewalls**. Firewall, Node, and Virtual Network are
 dropdowns. Interface under Attachment or Advanced Networking lists the
 interfaces of the selected node. Once Firewall is set, the Firewall
@@ -286,7 +306,14 @@ On 2026-10-05 the Palo Alto Firewall Interfaces were deleted in EDA before
 the collector had recorded the push, so the box kept `10.31.1.1/24`,
 `10.31.2.1/24`, zones `inside` and `outside`, profile `eda-ping`, and BGP
 peer group `eda`. Those were removed through the API. The physical
-`ethernet1/1` and `ethernet1/2` remain, with no address. FortiGate 1 still
+`ethernet1/1` and `ethernet1/2` remain, with no address.
+
+On 2026-10-07 `palo-alto-inside` and `palo-alto-outside` were recreated
+from `examples/03-interfaces.yaml` with Configure Firewall off. They are
+observe only, so Palo Alto still has no address on either port, and the
+leaf sessions to `10.31.1.1` and `10.31.2.1` stay `active`. Health is 80
+(`BGP not established`). Turning Configure Firewall on pushes the address,
+zone, and eBGP. FortiGate 1 still
 has `port2` `10.21.0.1/24` and `port3` `10.22.0.1/24` in VDOM `root`.
 FortiGate 2 still has `port2` `10.23.0.1/24` and `port3` `10.24.0.1/24`.
 Both FortiGates are `multi-vdom` and only `root` exists. The license allows

@@ -70,9 +70,16 @@ VNI on the service is optional and has to match the bridge domain.
 
 The lab demo stays in VDOM `root`. `fg2-local` (VNI 200) and `fg2-remote`
 (VNI 201) are two services over the same EVPN sessions, not extra BGP
-sessions or a second VDOM. The VTEP address is the `port2` link address.
-A loopback VTEP advertised on both sessions would be the production shape,
-and the prototype does not build it.
+sessions or a second VDOM.
+
+The VTEP should be a loopback. With the `port2` link address as the VTEP,
+the leaves reach it through whichever spine they prefer. VXLAN that
+arrives on `port3` is dropped, because the VXLAN interfaces are bound to
+`port2`. That is the lab state today. With a VTEP address set, the
+collector creates loopback `eda-vtep` (`/32`) in the VDOM, sources the
+VXLAN interfaces from it, and advertises the `/32` on both sessions instead
+of the link subnet. The collector has this since v1.3.5. The Firewall Interface field
+`advanced.vtepAddress` is the next app release.
 
 ## Topology
 
@@ -133,6 +140,10 @@ Four resources:
 | Firewall Report | What the collector last read and wrote. The UI does not read this object directly. |
 | Firewall Inventory | One row per firewall port or tenant, written by the collector. The Firewall Interface name and Tenant dropdowns read it. |
 
+Every kind needs a `status` object in its OpenAPI schema, even one the UI
+does not list. If one kind has none, EDA cannot generate the app OpenAPI
+and the whole Firewalls category disappears from the UI.
+
 Firewall and Firewall Interface status is in the EDA database, so EQL can
 query it, for example
 `.namespace.resources.cr.firewall_eda_labs.v1alpha1.firewall fields [ name, status.operationalState, status.health ]`.
@@ -167,7 +178,7 @@ The Firewall `spec.vendor` selects the API. Tenant selects where the push goes. 
 
 Palo Alto uses the XML API (`/api/`). The collector logs in with a key, sets candidate config, and commits. Untagged address is a layer3 IP entry on the physical port. A VLAN is a subinterface (`ethernet1/1.21`). Allow Ping creates profile `eda-ping` and attaches it. BGP uses the `default` virtual router: Firewall AS is `local-as`, Fabric AS is the peer AS, and the peer address is the fabric gateway (`.254`). `vsys1` uses the device virtual-router path. Another vsys uses that vsys path. This lab only has `vsys1`.
 
-FortiGate uses the REST API (`/api/v2`). The collector logs in and sends CMDB calls with `?vdom=` set to the tenant. A VLAN is a separate interface (`port2.21`) on the parent port. Allow Ping adds `ping` to `allowaccess`. BGP is a small update of AS and router-id, then a neighbor whose IP is the fabric gateway, whose remote AS is the Fabric AS, and whose interface is the port or VLAN interface. `activate` follows `ipv4-unicast` and `activate-evpn` follows `evpn`. Classic sessions are IPv4 only. An Advanced Networking service is `system/evpn` (EVI and route target), `system/vxlan` (`vxlan<vni>`, VNI, EVPN id, underlay port as source), and the address on that VXLAN interface. With `ipv4-unicast`, the underlay subnet is a `router/bgp/network` entry. The collector does not originate a default route on either vendor.
+FortiGate uses the REST API (`/api/v2`). The collector logs in and sends CMDB calls with `?vdom=` set to the tenant. A VLAN is a separate interface (`port2.21`) on the parent port. Allow Ping adds `ping` to `allowaccess`. BGP is a small update of AS and router-id, then a neighbor whose IP is the fabric gateway, whose remote AS is the Fabric AS, and whose interface is the port or VLAN interface. `activate` follows `ipv4-unicast` and `activate-evpn` follows `evpn`. Classic sessions are IPv4 only. An Advanced Networking service is `system/evpn` (EVI and route target), `system/vxlan` (`vxlan<vni>`, VNI, EVPN id, underlay port or loopback `eda-vtep` as source), and the address on that VXLAN interface. With `ipv4-unicast`, the VTEP `/32`, or the underlay subnet when there is no VTEP address, is a `router/bgp/network` entry. When the VXLAN source changes and FortiOS refuses the update, the collector deletes and recreates that VXLAN interface. The collector does not originate a default route on either vendor.
 
 Tenants in Firewall status come from Palo Alto `vsys` entries and FortiGate `system/vdom`.
 
