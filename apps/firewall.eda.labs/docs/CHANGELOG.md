@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.3.8
+
+- Collector: when the loopback VTEP cannot be created, that VDOM's VXLAN services are left untouched. v1.3.7 moved `vxlan200` and `vxlan201` onto the missing loopback, deleting them, when the FortiGate 2 evaluation license refused the loopback (CMDB -4, maximum number of entries)
+- Example 06 no longer sets `vtepAddress`
+- Docs: FortiGate 2 VXLAN root cause. SR Linux does not accept a route whose prefix contains its own next hop, so each spine accepts only the other FortiGate link subnet, and VXLAN reaches FortiGate 2 on `port3`. A loopback VTEP on a licensed FortiGate 2, or each spine advertising its own link subnet, fixes it. Palo Alto interfaces pushed and Up
+
 ## v1.3.7
 
 - Firewall Interface `advanced.vtepAddress` (VTEP Address, IPv4 `/32`). This turns on the loopback VTEP the collector gained in v1.3.5

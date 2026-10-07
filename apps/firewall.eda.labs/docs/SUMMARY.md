@@ -78,8 +78,12 @@ arrives on `port3` is dropped, because the VXLAN interfaces are bound to
 `port2`. That is the lab state today. With a VTEP address set, the
 collector creates loopback `eda-vtep` (`/32`) in the VDOM, sources the
 VXLAN interfaces from it, and advertises the `/32` on both sessions instead
-of the link subnet. The collector has this since v1.3.5. The Firewall Interface field
-`advanced.vtepAddress` is the next app release.
+of the link subnet. The field is `advanced.vtepAddress` (v1.3.7). The
+FortiGate 2 evaluation license refuses the loopback, so the lab does not
+use it yet. The link address cannot replace it, because SR Linux does not
+accept a route whose prefix contains its own next hop. Each spine accepts
+only the other FortiGate link subnet, so VXLAN to `10.23.0.1` arrives on
+`port3`, where FortiGate 2 drops it.
 
 ## Topology
 
@@ -161,7 +165,7 @@ Five intents. The state scripts on Firewall and Firewall Interface do nothing, s
 
 ## Collector and the two APIs
 
-`fwstatus` runs as Deployment `eda-fwstatus` in `eda-system`. Installing the app does not start it. It polls about once a minute. The State Engine cannot call the firewall.
+`fwstatus` runs as Deployment `eda-fwstatus` in `eda-system`. Installing the app does not start it. It polls every 30 seconds (`-interval` in `deploy/collector.yaml`). The State Engine cannot call the firewall.
 
 Each poll, for each Firewall:
 
