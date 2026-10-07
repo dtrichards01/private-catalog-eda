@@ -105,6 +105,10 @@ spec:
                 type: array
                 items:
                   type: string
+              ports:
+                type: array
+                items:
+                  type: string
               lastChecked:
                 type: string
               license:
