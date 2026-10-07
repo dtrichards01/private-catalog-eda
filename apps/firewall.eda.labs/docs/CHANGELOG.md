@@ -1,5 +1,10 @@
 # Changelog
 
+## v1.3.7
+
+- Firewall Interface `advanced.vtepAddress` (VTEP Address, IPv4 `/32`). This turns on the loopback VTEP the collector gained in v1.3.5
+- Collector polls every 30 seconds instead of 60 (`-interval 30s` in `deploy/collector.yaml`)
+
 ## v1.3.6
 
 - Docs only: FortiGate 1 untagged leaf cable, the FortiGate 2 loopback VTEP, the missing-status OpenAPI failure, and the Palo Alto interfaces recreated observe only. The collector is rebuilt from the same code under a new tag

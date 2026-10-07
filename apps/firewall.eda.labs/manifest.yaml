@@ -7,7 +7,7 @@ spec:
   version: v1alpha1
   title: Firewalls
   description: Lab prototype for two firewall use cases. Not a product. Production EDA-to-firewall API is Push Pull Provider in EDA 26.12.1.
-  image: ghcr.io/dtrichards01/private-eda-registry/firewall:v1.3.6
+  image: ghcr.io/dtrichards01/private-eda-registry/firewall:v1.3.7
   author: dtrichards01
   gitPathPrefix: /
   supportedEndpoints:
@@ -23,7 +23,7 @@ spec:
     categories:
       - services
     ociSpecVersion: v1.0.0
-    appImageDigest: sha256:706b4ff2c63a220a7bb22b065739c6e4411695ac73d1fafc4575b7f13b7b96b3
+    appImageDigest: sha256:cd9356e85580f9d2e8852220fa7605f511b05741024a849a9314662bbdbe2495
   components:
     - crd:
         path: firewall/crds/firewall.eda.labs_firewalls.yaml

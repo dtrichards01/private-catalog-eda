@@ -164,6 +164,13 @@ spec:
                     maximum: 4094
                     minimum: 1
                     type: integer
+                  vtepAddress:
+                    description: |-
+                      Loopback /32 the FortiGate sources VXLAN from and advertises in BGP.
+                      Empty sources VXLAN from this port, which drops tunnels the fabric
+                      sends to the FortiGate over another port.
+                    pattern: ^([0-9]{1,3}\.){3}[0-9]{1,3}/32$
+                    type: string
                 required:
                 - bgp
                 - interface
