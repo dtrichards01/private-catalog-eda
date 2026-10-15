@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.3.10
+
+- Firewall Interface UI: Attachment and BGP are hidden while Advanced Networking is set, and Advanced Networking is hidden while either is set. Saving with both is refused. EDA can hide a field but not grey it out. The descriptions say that Advanced Networking creates the spine default interface, default BGP group and peer, and policy, and that Attachment and BGP need the virtual network created first
+- Collector: no Palo Alto commit is queued while another commit waits. A commit takes about 3 minutes on the lab VM-50, and v1.3.9 queued one every poll, so 20 commits waited and the new addresses never reached the running config. A candidate left by an earlier failed commit is committed on the next poll, and a commit error carries the API detail
+- Collector: when an interface address or fabric peer changes, the old Palo Alto address and the peer keyed by the old gateway, and the old FortiGate neighbor, are removed. v1.3.9 left the old `/24` on the Palo Alto port next to the new `/30`
+
 ## v1.3.9
 
 - Firewall Interface `bgp.peerIP` (Fabric Peer IP). The fabric address the firewall peers with; it must be in the interface subnet and not the firewall address

@@ -57,10 +57,11 @@ spec:
           spec:
             description: |-
               FirewallInterfaceSpec is one NIC on an external firewall.
-              Classic: Attachment is the leaf edge port in a virtual network you build,
-              and BGP is the eBGP neighbor on that network. Advanced Networking: the
-              NIC is a FortiGate underlay port to a spine, and the app builds the spine
-              default interface and default BGP. Set one of Attachment or Advanced.
+              Classic: Attachment is the leaf edge port in a virtual network you build
+              first, and BGP is the eBGP neighbor on that network. Advanced Networking:
+              the NIC is a FortiGate underlay port to a spine, and the app builds the
+              spine default interface, default BGP group and peer, and policy. Set
+              Attachment and BGP, or Advanced Networking, not both.
             properties:
               address:
                 description: |-
@@ -69,9 +70,10 @@ spec:
                 type: string
               advanced:
                 description: |-
-                  FortiGate underlay to a spine. Builds the spine default interface, EVPN
-                  policy, default BGP group, and default BGP peer, and pushes the VXLAN
-                  services to the FortiGate. Leave empty for classic.
+                  FortiGate underlay to a spine. The app creates the spine default
+                  interface, EVPN policy, default BGP group, and default BGP peer, and
+                  pushes the VXLAN services to the FortiGate. No virtual network is
+                  needed for the underlay. Hidden while Attachment or BGP is set.
                 properties:
                   bgp:
                     description: eBGP between the spine and the FortiGate.
@@ -184,9 +186,10 @@ spec:
                 type: boolean
               attachment:
                 description: |-
-                  Classic interconnect. Leaf edge port in an existing virtual network.
-                  The virtual network owns the edge port, router, IRB or routed interface,
-                  and BGP peer. Leave empty for Advanced Networking.
+                  Classic interconnect. Create the virtual network first: it owns the
+                  leaf edge port, router, IRB or routed interface, and fabric BGP peer,
+                  and this app creates none of them. Hidden while Advanced Networking
+                  is set.
                 properties:
                   encapType:
                     default: "Null"
@@ -222,7 +225,8 @@ spec:
               bgp:
                 description: |-
                   Classic eBGP neighbor written to the firewall in the selected tenant.
-                  Advanced Networking has its own BGP.
+                  The fabric side of the session is the BGP peer in the virtual network,
+                  which has to exist already. Hidden while Advanced Networking is set.
                 properties:
                   localAS:
                     description: Fabric AS. The firewall writes this as the peer AS.
