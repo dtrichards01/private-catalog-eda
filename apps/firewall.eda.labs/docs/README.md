@@ -130,8 +130,22 @@ Until then everything on that cable is untagged. In `pan-d3l-vnets.yaml`,
 true inconsistent with subinterface 4097`), and the virtual network
 transaction fails on every retry. As of 2026-10-07 the `fg-inside` and
 `fg-outside` bridge domains (VNI 204 and 203) are Up and both FortiGate 1
-sessions are Established. Both virtual networks still report Degraded with
-no peers or interfaces down. That is not explained yet.
+sessions are Established.
+
+Each firewall zone lives on one leaf. Inside is leaf1 and outside is leaf2,
+for both Palo Alto and FortiGate 1. Each zone has one client port and one
+firewall port. The TopoNodes carry the zone as a label (`firewall-zone=inside`
+on leaf1 and `firewall-zone=outside` on leaf2), and each VNET router selects
+its zone with `firewall-zone=<zone>,fabric=pan-d3l`. Selecting `role=leaf`
+built every VRF and gateway IRB on both leaves. The gateway IP is on one
+leaf only, so the copy on the other leaf stayed oper-down and every VNET
+reported Degraded. With the zone selectors (2026-10-15) all four VNETs are
+Up on one node each.
+
+The clients route to the other zone through the firewall interface, not the
+leaf gateway: client1 sends `10.31.2.0/24` via Palo Alto `10.31.1.1`, and
+client3 sends `10.22.0.0/24` via FortiGate 1 `10.21.0.1`. The firewall
+policy is what allows or blocks client1 to client2 and client3 to client4.
 
 FortiGate 2 is the EVPN firewall. It joins the overlay as a VTEP instead
 of hanging off a leaf edge port. Each spine has one routed link to it:

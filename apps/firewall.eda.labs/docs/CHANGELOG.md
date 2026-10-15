@@ -1,5 +1,14 @@
 # Changelog
 
+## v1.3.9
+
+- Firewall Interface `bgp.peerIP` (Fabric Peer IP). The fabric address the firewall peers with; it must be in the interface subnet and not the firewall address
+- Without it, the collector derives the peer from the prefix: the other host on a `/30` or `/31`, and `.254` (or `.253`) in larger subnets. v1.3.8 always used `.254`, so a `/30` routed link pushed a neighbor that was not on the link
+
+## Unreleased (lab only)
+
+- `pan-d3l-vnets.yaml`: each firewall VNET router selects its own leaf through the TopoNode label `firewall-zone` (`inside` on leaf1, `outside` on leaf2) instead of `role=leaf`. The spare VRF and IRB on the other leaf were oper-down and held all four VNETs at Degraded. They are Up on one node each
+
 ## v1.3.8
 
 - Collector: when the loopback VTEP cannot be created, that VDOM's VXLAN services are left untouched. v1.3.7 moved `vxlan200` and `vxlan201` onto the missing loopback, deleting them, when the FortiGate 2 evaluation license refused the loopback (CMDB -4, maximum number of entries)

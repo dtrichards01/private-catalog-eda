@@ -238,6 +238,12 @@ spec:
                       AS.
                     format: int32
                     type: integer
+                  peerIP:
+                    description: |-
+                      Fabric address the firewall peers with. Empty is the other host on a
+                      /30 or /31, and .254 in larger subnets.
+                    pattern: ^([0-9]{1,3}\.){3}[0-9]{1,3}$
+                    type: string
                 required:
                 - localAS
                 - peerAS
