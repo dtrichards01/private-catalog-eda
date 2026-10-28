@@ -8,6 +8,7 @@ spec:
       - networking
     documentation: services/docs
     ociSpecVersion: v1.0.0
+    appImageDigest: sha256:550c12654c069e9b7598c4d83e69ec19f2490ef183b2d7e16c8e44a4b55feef3
   author: Nokia
   components:
     - crd:
