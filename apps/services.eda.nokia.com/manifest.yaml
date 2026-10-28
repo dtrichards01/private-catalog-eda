@@ -8,7 +8,7 @@ spec:
       - networking
     documentation: services/docs
     ociSpecVersion: v1.0.0
-    appImageDigest: sha256:550c12654c069e9b7598c4d83e69ec19f2490ef183b2d7e16c8e44a4b55feef3
+    appImageDigest: sha256:caea70745401a8a4817df204633b3ddd10addb4ee704f9488cf17212e7d65897
   author: Nokia
   components:
     - crd:
@@ -580,13 +580,13 @@ spec:
         image: image/networksclientprovider
         name: networksclientprovider
         pullSecret: appstore-eda-apps-registry-image-pull
-  description: 'DEV BUILD v7.0.1-xns1 of the Nokia Services app. Adds interfaceNamespace on BridgeInterface for the Service Tenancy prototype. Not for production.
+  description: 'DEV BUILD v7.0.1-xns2 of the Nokia Services app. Adds interfaceNamespace on BridgeInterface, enforced by Service Tenancy grants, for the Service Tenancy prototype. Not for production.
 
 '
   gitPathPrefix: /
   gitReference: 80806fefb97935889b3016cd1b08930d811cee90
   group: services.eda.nokia.com
-  image: ghcr.io/dtrichards01/private-eda-registry/services:v7.0.1-xns1
+  image: ghcr.io/dtrichards01/private-eda-registry/services:v7.0.1-xns2
   requirements:
     - appId: protocols.eda.nokia.com
       state: Present
