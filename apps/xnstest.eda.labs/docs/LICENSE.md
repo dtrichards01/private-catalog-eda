@@ -1,3 +1,0 @@
-# License
-
-Private use.
