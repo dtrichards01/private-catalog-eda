@@ -1,0 +1,103 @@
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: tenants.tenancy.dtrichards01.github.io
+spec:
+  group: tenancy.dtrichards01.github.io
+  names:
+    kind: Tenant
+    listKind: TenantList
+    plural: tenants
+    singular: tenant
+  scope: Namespaced
+  versions:
+  - name: v1alpha1
+    served: true
+    storage: true
+    schema:
+      openAPIV3Schema:
+        type: object
+        properties:
+          apiVersion:
+            type: string
+          kind:
+            type: string
+          metadata:
+            type: object
+          spec:
+            type: object
+            description: A tenant namespace onboarded onto this Platform namespace.
+            required:
+            - tenantNamespace
+            - ranges
+            properties:
+              tenantNamespace:
+                type: string
+                description: Tenant namespace. Must already exist.
+              description:
+                type: string
+              interfaces:
+                type: array
+                description: Platform Interfaces the tenant may attach to.
+                items:
+                  type: object
+                  properties:
+                    interface:
+                      type: string
+                      description: Interface name in this namespace.
+                    interfaceSelector:
+                      type: array
+                      description: Label selectors (key=value), all must match. Used when interface is not set.
+                      items:
+                        type: string
+                    untagged:
+                      type: boolean
+                      description: Allow untagged (vlanID null or untagged).
+                    vlans:
+                      type: string
+                      description: Allowed VLANs, for example 100-199,300.
+              ranges:
+                type: object
+                description: Number ranges for the tenant. Must not overlap the Platform pools or other tenants.
+                required:
+                - evi
+                - vni
+                - tunnelIndex
+                properties:
+                  evi:
+                    type: object
+                    required: [start, size]
+                    properties:
+                      start:
+                        type: integer
+                        minimum: 1
+                      size:
+                        type: integer
+                        minimum: 1
+                  vni:
+                    type: object
+                    required: [start, size]
+                    properties:
+                      start:
+                        type: integer
+                        minimum: 1
+                      size:
+                        type: integer
+                        minimum: 1
+                  tunnelIndex:
+                    type: object
+                    required: [start, size]
+                    properties:
+                      start:
+                        type: integer
+                        minimum: 1
+                      size:
+                        type: integer
+                        minimum: 1
+          status:
+            type: object
+            properties:
+              message:
+                type: string
+    subresources:
+      status: {}
