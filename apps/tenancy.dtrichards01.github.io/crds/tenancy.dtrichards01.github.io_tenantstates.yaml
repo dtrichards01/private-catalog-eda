@@ -1,0 +1,51 @@
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: tenantstates.tenancy.dtrichards01.github.io
+spec:
+  group: tenancy.dtrichards01.github.io
+  names:
+    kind: TenantState
+    listKind: TenantStateList
+    plural: tenantstates
+    singular: tenantstate
+  scope: Namespaced
+  versions:
+  - name: v1alpha1
+    served: true
+    storage: true
+    schema:
+      openAPIV3Schema:
+        type: object
+        properties:
+          apiVersion:
+            type: string
+          kind:
+            type: string
+          metadata:
+            type: object
+          spec:
+            type: object
+            description: Internal. Written by the Tenant config intent; the state intent copies it to the Tenant status.
+            properties:
+              tenantNamespace:
+                type: string
+              interfaces:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    interface:
+                      type: string
+                    node:
+                      type: string
+                    port:
+                      type: string
+                    untagged:
+                      type: boolean
+                    vlans:
+                      type: string
+          status:
+            type: object
+    subresources:
+      status: {}

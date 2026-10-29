@@ -26,7 +26,7 @@ spec:
             type: object
           spec:
             type: object
-            description: A Platform Interface granted to this tenant namespace. Written by the Service Tenancy app; read-only for tenants.
+            description: The tenant's read-only view of one Platform Interface it may use, after the Tenant's label selectors are resolved. Written by the Service Tenancy app into the tenant namespace.
             properties:
               interface:
                 type: string

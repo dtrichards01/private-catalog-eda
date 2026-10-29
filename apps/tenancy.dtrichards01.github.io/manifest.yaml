@@ -7,7 +7,7 @@ spec:
   version: v1alpha1
   title: Service Tenancy
   description: DEV BUILD. Onboards tenant namespaces onto a Platform namespace. Grants Platform Interfaces and VLANs, and assigns per-tenant EVI, VNI and tunnel index ranges. Needs the dev Services build v7.0.1-xns2. Not for production.
-  image: ghcr.io/dtrichards01/private-eda-registry/tenancy:v0.2.1
+  image: ghcr.io/dtrichards01/private-eda-registry/tenancy:v0.2.2
   author: dtrichards01
   gitPathPrefix: /
   supportedEndpoints:
@@ -23,7 +23,7 @@ spec:
     categories:
       - services
     ociSpecVersion: v1.0.0
-    appImageDigest: sha256:c0a782872c86203437d9e3ae6dfccc440963902c648a536819bd4d3de987e4b4
+    appImageDigest: sha256:ef78f8ab54fc606947c9617e45a614d40b3621703964fa4bc78a23a78d3c3377
   components:
     - crd:
         path: tenancy/crds/tenancy.dtrichards01.github.io_tenants.yaml
@@ -51,11 +51,26 @@ spec:
           listKind: GrantedInterfaceList
           plural: grantedinterfaces
           singular: grantedinterface
+    - crd:
+        path: tenancy/crds/tenancy.dtrichards01.github.io_tenantstates.yaml
+        schema: tenancy/openapiv3/eda_oas_tenancy.dtrichards01.github.io_tenantstates.json
+        api:
+          expose: none
+        names:
+          kind: TenantState
+          listKind: TenantStateList
+          plural: tenantstates
+          singular: tenantstate
     - script:
         path: tenancy/intents/tenant/config_intent.py
         type: config
         trigger:
           kind: Tenant
+    - script:
+        path: tenancy/intents/tenantstate/state_intent.py
+        type: state
+        trigger:
+          kind: TenantState
   dependencies:
     - file:
         path: tenancy/intents

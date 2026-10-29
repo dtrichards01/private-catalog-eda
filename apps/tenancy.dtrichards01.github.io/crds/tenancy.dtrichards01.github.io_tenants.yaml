@@ -99,5 +99,27 @@ spec:
             properties:
               message:
                 type: string
+              numInterfaces:
+                type: integer
+                description: Number of Interfaces the grants resolve to.
+              grantedInterfaces:
+                type: string
+                description: Resolved Interfaces with their access, for the table view.
+              interfaces:
+                type: array
+                description: Resolved Interfaces, after label selectors are applied.
+                items:
+                  type: object
+                  properties:
+                    interface:
+                      type: string
+                    node:
+                      type: string
+                    port:
+                      type: string
+                    untagged:
+                      type: boolean
+                    vlans:
+                      type: string
     subresources:
       status: {}

@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.2.2
+
+- Tenant status shows the resolved grants: `numInterfaces`, a one-line `grantedInterfaces` summary and the `interfaces` list, after label selectors are applied. The Tenants table shows the count and summary, so a selector grant no longer looks out of step with the tenant's Granted Interfaces.
+- New internal `TenantState` (not exposed) and a state intent that writes the Tenant status, following the Services app pattern.
+- Granted Interface description explains it is the tenant's read-only, per-Interface view.
+
 ## v0.2.1
 
 - UI: Tenant and Granted Interface tables list name and namespace. Without `.metadata.name` in the default columns the table did not load the name, and Edit requested `tenants/undefined` and showed "Resource not found".
