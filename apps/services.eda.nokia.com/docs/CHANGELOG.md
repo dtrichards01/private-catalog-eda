@@ -1,5 +1,9 @@
 # Changelog
 
+## v7.0.1-xns3
+
+- BridgeDomain and BridgeInterface state is read from the node namespace, so tenant resources on Platform nodes report real operational state, alarms and statistics.
+
 ## v7.0.1-xns2
 
 - Cross-namespace use needs a Tenant (tenancy.dtrichards01.github.io) in the Platform namespace: the Interface and VLANs must be granted, EVI/VNI/tunnel index must be inside the tenant ranges, and explicit route targets are rejected.
