@@ -1,0 +1,68 @@
+apiVersion: core.eda.nokia.com/v1
+kind: Manifest
+metadata:
+  name: xnstest
+spec:
+  group: xnstest.eda.labs
+  version: v1alpha1
+  title: Cross Namespace Test
+  description: Throwaway probe for the Service Tenancy design. Tests whether an app intent can read and write resources in another namespace.
+  image: ghcr.io/dtrichards01/private-eda-registry/xnstest:v0.1.1
+  author: dtrichards01
+  gitPathPrefix: /
+  supportedEndpoints:
+    - srl:25.*
+    - srl:26.*
+  supportedCoreVersions:
+    - v4.0.0-0
+    - v5.0.0-0
+    - v6.0.0-0
+  appInfo:
+    documentation: xnstest/docs
+    readme: xnstest/docs/README.md
+    categories:
+      - services
+    ociSpecVersion: v1.0.0
+    appImageDigest: sha256:8a47dd70c8ac0592b4280162857d7eb956deb05d7b92e4dd0b529fa16f8aac84
+  components:
+    - crd:
+        path: xnstest/crds/xnstest.eda.labs_crossnsprobes.yaml
+        schema: xnstest/openapiv3/eda_oas_xnstest.eda.labs_crossnsprobes.json
+        api:
+          expose: readWrite
+        ui:
+          category: Cross Namespace Test
+          name: Probes
+        names:
+          kind: CrossNsProbe
+          listKind: CrossNsProbeList
+          plural: crossnsprobes
+          singular: crossnsprobe
+    - crd:
+        path: xnstest/crds/xnstest.eda.labs_crossnsresults.yaml
+        schema: xnstest/openapiv3/eda_oas_xnstest.eda.labs_crossnsresults.json
+        api:
+          expose: readWrite
+        ui:
+          category: Cross Namespace Test
+          name: Results
+        names:
+          kind: CrossNsResult
+          listKind: CrossNsResultList
+          plural: crossnsresults
+          singular: crossnsresult
+    - script:
+        path: xnstest/intents/crossnsprobe/config_intent.py
+        type: config
+        trigger:
+          kind: CrossNsProbe
+    - script:
+        path: xnstest/intents/crossnsresult/state_intent.py
+        type: state
+        trigger:
+          kind: CrossNsResult
+  dependencies:
+    - file:
+        path: xnstest/intents
+    - file:
+        path: xnstest/__init__.py
