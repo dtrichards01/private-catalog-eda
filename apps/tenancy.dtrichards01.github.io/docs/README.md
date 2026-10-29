@@ -21,7 +21,7 @@ spec:
     tunnelIndex: {start: 10000, size: 1000}
 ```
 
-The app creates `tenancy-evi-pool`, `tenancy-vni-pool` and `tenancy-tunnel-index-pool` in the tenant namespace. Tenant BridgeDomains that attach to Platform Interfaces must allocate from those pools.
+In the same transaction, create `tenancy-evi-pool`, `tenancy-vni-pool` and `tenancy-tunnel-index-pool` (IndexAllocationPool) in the tenant namespace with those ranges. EDA 26.8.1 does not let app intents create pools, so the Platform does; the Tenant rejects pools outside its ranges. Tenant BridgeDomains that attach to Platform Interfaces must allocate from those pools.
 
 The dev Services build then lets a tenant BridgeInterface set `interfaceNamespace` to the Platform namespace only for granted Interfaces and VLANs, with EVI, VNI and tunnel index inside the tenant ranges. Explicit route targets are rejected.
 
