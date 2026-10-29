@@ -7,7 +7,7 @@ spec:
   version: v1alpha1
   title: Service Tenancy
   description: DEV BUILD. Onboards tenant namespaces onto a Platform namespace. Grants Platform Interfaces and VLANs, and assigns per-tenant EVI, VNI and tunnel index ranges. Needs the dev Services build v7.0.1-xns2. Not for production.
-  image: ghcr.io/dtrichards01/private-eda-registry/tenancy:v0.2.0
+  image: ghcr.io/dtrichards01/private-eda-registry/tenancy:v0.2.1
   author: dtrichards01
   gitPathPrefix: /
   supportedEndpoints:
@@ -23,7 +23,7 @@ spec:
     categories:
       - services
     ociSpecVersion: v1.0.0
-    appImageDigest: sha256:eeb71bbab7b57268d5365e5641f4cac135964b4c61de6e669f3003e1c85258ae
+    appImageDigest: sha256:c0a782872c86203437d9e3ae6dfccc440963902c648a536819bd4d3de987e4b4
   components:
     - crd:
         path: tenancy/crds/tenancy.dtrichards01.github.io_tenants.yaml
