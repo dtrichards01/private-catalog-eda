@@ -70,11 +70,24 @@ spec:
                   required:
                   - name
                   properties:
+                    appliedAt:
+                      type: string
                     attachmentName:
+                      type: string
+                    commitJob:
+                      type: string
+                    configDetail:
+                      type: string
+                    configState:
                       type: string
                     message:
                       type: string
                     name:
+                      type: string
+                    observedGeneration:
+                      type: integer
+                      format: int64
+                    pendingSince:
                       type: string
                     observedAddress:
                       type: string

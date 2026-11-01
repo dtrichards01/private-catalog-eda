@@ -1,5 +1,27 @@
 # Changelog
 
+## v1.4.0
+
+- New kinds FirewallPolicySource (config) and FirewallPolicyReport (status, written by the collector). A source names a firewall, a PAN vsys, an EDA virtual network and service target, and the PAN address group, tag and EDA GroupTag bindings. The collector reads the PAN security rules, objects, DAG membership and registered IPs through the XML API, read-only, and classifies each rule as FABRIC_ENFORCEABLE, FABRIC_ENFORCEABLE_DENY, NGFW_REQUIRED or UNSUPPORTED per test plan v0.18 section 18. Only enabled rules tagged exactly `eda-export-to-gbp` are eligible. No compatibility profile ships, so fabric candidates report UNSUPPORTED with COMPATIBILITY_UNVALIDATED and the candidate class. Nothing is written to the fabric or the firewall
+- Policy reads are checked against the PAN config audit version before and after the read. A change during the read reports STALE_SOURCE, and an unreadable firewall keeps the last good result with source health UNAVAILABLE
+- FirewallInterface status: `configState` says whether the firewall runs the spec, read back through the vendor API after each push. Address, zone, the BGP peer and VXLAN services are compared with the running state: NotManaged, Pending, Committing (a Palo Alto commit job is queued or running), Applied, Verified (Applied and Up), Failed (apply error or a failed commit job, with its detail), Removing. `configDetail` lists what is missing, `pendingSince` restarts on each new `metadata.generation`, and a change not applied within 10 minutes says so. Status only, no alarm. New Config column
+- Collector: a Palo Alto API error no longer includes the request URL, which carried the password or API key
+
+## v1.3.13 (collector only)
+
+- Collector: no heartbeat. A FirewallReport is written only when it changes, so an idle firewall creates no EDA transactions. `lastChecked` is the time of the last change, not the last poll. Collector liveness is the `eda-fwstatus` pod and its `polling firewalls` log line
+
+## v1.3.12 (collector only)
+
+- Collector: a new informational or debug event no longer writes the FirewallReport on its own. The firewalls log lines such as "DHCP statistics" and "Connection to Update server closed" every minute or two, so v1.3.11 still wrote a report about every 80 seconds. The events list is refreshed with the next other change or the 10-minute heartbeat. A new event at notice, warning, or above (FortiGate) or low and above (Palo Alto) is still written on the poll that sees it
+
+## v1.3.11 (collector only)
+
+- Collector: a FirewallReport is written only when it changes, or every 10 minutes so `lastChecked` still shows the collector is alive. Every report write is an EDA transaction, and v1.3.10 wrote all three lab reports every 30 seconds. Health, operational state, NIC state, BGP and message changes are still written on the poll that sees them
+- Collector: events leave out the collector's own admin logins and logouts (FortiGate `action` login/logout, Palo Alto `auth-success` and "User ... logged in via") for the API user in the Firewall secret, and the FortiGate performance statistics row. They changed on every poll. Logins by other users are kept. Up to 50 log rows are read so five real events remain
+- Collector: Palo Alto events show the log description (`opaque`) instead of the event ID, for example "Port ethernet1/2: Down" instead of `link-change`
+- Collector: report interfaces are sorted by name. v1.3.10 listed them in random order
+
 ## v1.3.10
 
 - Firewall Interface UI: Attachment and BGP are hidden while Advanced Networking is set, and Advanced Networking is hidden while either is set. Saving with both is refused. EDA can hide a field but not grey it out. The descriptions say that Advanced Networking creates the spine default interface, default BGP group and peer, and policy, and that Attachment and BGP need the virtual network created first

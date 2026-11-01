@@ -1,0 +1,211 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.21.0
+  name: firewallpolicysources.firewall.eda.labs
+spec:
+  group: firewall.eda.labs
+  names:
+    kind: FirewallPolicySource
+    listKind: FirewallPolicySourceList
+    plural: firewallpolicysources
+    singular: firewallpolicysource
+  scope: Namespaced
+  versions:
+  - additionalPrinterColumns:
+    - jsonPath: .spec.firewall
+      name: Firewall
+      type: string
+    - jsonPath: .spec.scope
+      name: Scope
+      type: string
+    - jsonPath: .spec.virtualNetwork
+      name: Virtual Network
+      type: string
+    - jsonPath: .status.sourceHealth
+      name: Health
+      type: string
+    - jsonPath: .status.policyRevision
+      name: Revision
+      type: string
+    - jsonPath: .status.exported
+      name: Exported
+      type: integer
+    - jsonPath: .status.ngfwRequired
+      name: NGFW
+      type: integer
+    - jsonPath: .status.unsupported
+      name: Unsupported
+      type: integer
+    name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: |-
+              FirewallPolicySourceSpec selects the committed Palo Alto security policy of
+              one vsys for discovery. Only rules tagged eda-export-to-gbp are evaluated.
+              Observe mode reads and reports. It does not change the firewall, EDA
+              microsegmentation, or the fabric.
+            properties:
+              firewall:
+                description: Palo Alto Firewall in this namespace. Its management
+                  URL and credential Secret are reused.
+                type: string
+              groups:
+                description: |-
+                  Controlled taxonomy: each Palo Alto dynamic address group, the one tag its filter must be,
+                  and the existing EDA GroupTag it stands for. Other groups and tags are ignored.
+                items:
+                  description: PolicyGroupBinding maps one controlled dynamic address
+                    group to an EDA GroupTag.
+                  properties:
+                    addressGroup:
+                      pattern: ^[A-Za-z0-9._-]{1,63}$
+                      type: string
+                    groupTag:
+                      description: Must already exist in this namespace. Discovery
+                        never creates one.
+                      type: string
+                    tag:
+                      pattern: ^[A-Za-z0-9._-]{1,127}$
+                      type: string
+                  required:
+                  - addressGroup
+                  - groupTag
+                  - tag
+                  type: object
+                type: array
+              mode:
+                default: observe
+                description: observe reads, normalises and classifies. Reviewed apply
+                  needs the Microsegmentation App contract and is not in this release.
+                enum:
+                - observe
+                type: string
+              scope:
+                default: vsys1
+                description: Palo Alto vsys that holds the rulebase.
+                pattern: ^[a-z0-9]+$
+                type: string
+              serviceTarget:
+                description: Router or bridge domain in the Virtual Network that fabric
+                  policy would target. Never inferred.
+                type: string
+              virtualNetwork:
+                description: The one Virtual Network every group member must belong
+                  to. Members in another network are reported, not mapped.
+                type: string
+            required:
+            - firewall
+            - virtualNetwork
+            type: object
+          status:
+            description: FirewallPolicySourceStatus is the summary of the latest FirewallPolicyReport.
+            properties:
+              complete:
+                type: boolean
+              correlationId:
+                type: string
+              exported:
+                type: integer
+              groups:
+                items:
+                  description: PolicyGroupStatus is one group binding after identity
+                    and scope checks.
+                  properties:
+                    addressGroup:
+                      type: string
+                    groupTag:
+                      type: string
+                    reasons:
+                      items:
+                        type: string
+                      type: array
+                    state:
+                      type: string
+                  type: object
+                type: array
+              lastChanged:
+                description: Time of the last change to the report.
+                type: string
+              membershipObservationId:
+                description: Changes when dynamic group membership or registered IPs
+                  change without a commit.
+                type: string
+              message:
+                type: string
+              ngfwRequired:
+                type: integer
+              policyRevision:
+                description: Palo Alto config version of the snapshot.
+                type: string
+              reasons:
+                description: Scope problems that make every rule unsupported.
+                items:
+                  type: string
+                type: array
+              ruleCount:
+                type: integer
+              rules:
+                items:
+                  description: PolicyRuleStatus is one exported rule after evaluation.
+                  properties:
+                    action:
+                      type: string
+                    candidate:
+                      description: What a validated compatibility profile would allow,
+                        when only the profile or identity blocks the rule.
+                      type: string
+                    classification:
+                      description: FABRIC_ENFORCEABLE, FABRIC_ENFORCEABLE_DENY, NGFW_REQUIRED
+                        or UNSUPPORTED.
+                      type: string
+                    inspectionRequirement:
+                      type: string
+                    name:
+                      type: string
+                    position:
+                      type: integer
+                    reasons:
+                      items:
+                        type: string
+                      type: array
+                  type: object
+                type: array
+              sourceHealth:
+                description: OK, STALE_SOURCE when the read was incomplete or a commit
+                  landed during it, or UNAVAILABLE.
+                type: string
+              unsupported:
+                type: integer
+            required:
+            - exported
+            - ngfwRequired
+            - ruleCount
+            - unsupported
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}

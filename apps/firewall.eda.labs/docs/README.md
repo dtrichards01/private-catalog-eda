@@ -17,10 +17,14 @@ Empty uses `vsys1` or `root`.
 
 A classic interface sets Attachment and BGP. Palo Alto and Fortinet-1 fabric
 objects, the edge port, the router, and the BGP peer, belong on the virtual
-network. The app does not emit them. Advanced Networking on Fortinet-2 has
-its own spine port, BGP, address families, and services. It emits the
-default interface, address family policy, default BGP group, and default
-BGP peer. It does not emit a default router or the spine interface.
+network. The app does not emit them, so create the virtual network first.
+Advanced Networking on Fortinet-2 has its own spine port, BGP, address
+families, and services. It emits the default interface, address family
+policy, default BGP group, and default BGP peer. It does not emit a default
+router or the spine interface. The two are exclusive. In the form,
+Attachment and BGP are hidden while Advanced Networking is set, and Advanced
+Networking is hidden while either is set. EDA can hide a field but cannot
+grey it out.
 
 VLAN on the Firewall Interface (`spec.vlanID`) is pushed to the firewall.
 Empty leaves the port untagged. Palo Alto creates `ethernet1/1.<vlan>`.
@@ -330,8 +334,8 @@ state name. `Established` is the up session. The other names those APIs
 return are `Idle`, `Connect`, `Active`, `OpenSent`, and `OpenConfirm`.
 
 Published in `dtrichards01/private-catalog-eda` as
-`ghcr.io/dtrichards01/private-eda-registry/firewall:v1.3.8`.
-The collector image is `ghcr.io/dtrichards01/private-eda-registry/fwstatus:v1.3.8`.
+`ghcr.io/dtrichards01/private-eda-registry/firewall:v1.3.10`.
+The collector image is `ghcr.io/dtrichards01/private-eda-registry/fwstatus:v1.3.10`.
 It polls every 30 seconds (`-interval 30s` in `deploy/collector.yaml`).
 The UI category is **Firewalls**. Firewall, Node, and Virtual Network are
 dropdowns. Interface under Attachment or Advanced Networking lists the

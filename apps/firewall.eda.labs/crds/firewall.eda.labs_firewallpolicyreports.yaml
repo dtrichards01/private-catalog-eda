@@ -1,0 +1,127 @@
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: firewallpolicyreports.firewall.eda.labs
+spec:
+  group: firewall.eda.labs
+  names:
+    kind: FirewallPolicyReport
+    listKind: FirewallPolicyReportList
+    plural: firewallpolicyreports
+    singular: firewallpolicyreport
+  scope: Namespaced
+  versions:
+  - name: v1alpha1
+    served: true
+    storage: true
+    schema:
+      openAPIV3Schema:
+        type: object
+        properties:
+          apiVersion: &id001
+            type: string
+          kind: *id001
+          metadata:
+            type: object
+          spec:
+            type: object
+            properties:
+              source: *id001
+              firewall: *id001
+              mode: *id001
+              managementMode: *id001
+              managementScope: *id001
+              virtualNetwork: *id001
+              serviceTarget: *id001
+              exportTag: *id001
+              compatibilityProfile: *id001
+              sourceHealth: *id001
+              message: *id001
+              correlationId: *id001
+              capturedAt: *id001
+              lastSuccessfulRevision: *id001
+              snapshot:
+                type: object
+                properties:
+                  policyRevision: *id001
+                  objectRevision: *id001
+                  membershipObservationId: *id001
+                  sourceHash: *id001
+                  normalisedHash: *id001
+                  complete: &id002
+                    type: boolean
+                  rulesComplete: *id002
+                  referencedObjectsComplete: *id002
+                  effectiveOrderComplete: *id002
+                  membershipReadComplete: *id002
+                  problems: &id003
+                    type: array
+                    items: *id001
+              reasons: *id003
+              summary:
+                type: object
+                properties:
+                  rules: &id004
+                    type: integer
+                  exported: *id004
+                  eligible: *id004
+                  fabricEnforceable: *id004
+                  fabricEnforceableDeny: *id004
+                  ngfwRequired: *id004
+                  unsupported: *id004
+              groups:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    addressGroup: *id001
+                    tag: *id001
+                    groupTag: *id001
+                    filter: *id001
+                    state: *id001
+                    members:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          name: *id001
+                          type: *id001
+                          address: *id001
+                          virtualNetworks: *id003
+                          state: *id001
+                    reasons: *id003
+              rules:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id: *id001
+                    name: *id001
+                    position: *id004
+                    enabled: *id002
+                    action: *id001
+                    from: *id003
+                    to: *id003
+                    source: *id003
+                    destination: *id003
+                    applications: *id003
+                    services: *id003
+                    eligible: *id002
+                    classification: *id001
+                    candidate: *id001
+                    inspectionRequirement: *id001
+                    translationState: *id001
+                    pathRequirement: *id002
+                    pathState: *id001
+                    bypassAuthorisation: *id001
+                    requires: *id003
+                    reasons: *id003
+            required:
+            - source
+            - firewall
+          status:
+            type: object
+            properties:
+              message: *id001
+    subresources:
+      status: {}

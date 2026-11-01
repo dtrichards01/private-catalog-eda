@@ -33,6 +33,9 @@ spec:
     - jsonPath: .status.operationalState
       name: State
       type: string
+    - jsonPath: .status.configState
+      name: Config
+      type: string
     name: v1alpha1
     schema:
       openAPIV3Schema:
@@ -302,16 +305,35 @@ spec:
             properties:
               adminState:
                 type: string
+              appliedAt:
+                type: string
               attachmentName:
                 description: Leaf Interface resource created for this attachment.
+                type: string
+              commitJob:
+                description: Last Palo Alto commit job the collector enqueued.
+                type: string
+              configDetail:
+                type: string
+              configState:
+                description: |-
+                  Whether the firewall runs this spec, read back through the vendor API. Applied means the running
+                  config has it; Verified also needs the interface Up. Pending and Committing say what is missing.
                 type: string
               message:
                 type: string
               observedAddress:
                 type: string
+              observedGeneration:
+                description: metadata.generation the config state was computed for.
+                format: int64
+                type: integer
               operationalState:
                 description: Up when the port is up. When this interface has BGP,
                   Up also requires that session to be established.
+                type: string
+              pendingSince:
+                description: When this generation started waiting for the firewall.
                 type: string
               services:
                 description: Advanced Networking services as resolved from the bridge
