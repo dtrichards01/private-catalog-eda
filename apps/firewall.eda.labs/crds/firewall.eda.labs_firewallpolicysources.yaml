@@ -194,8 +194,9 @@ spec:
                 type: integer
               generation:
                 description: |-
-                  Derive mode only. Enabled builds the derived objects, Disabled means the Firewall's Policy Generation is off,
-                  Rejected means EDA refused them (see reasons) and they are retried when the translation changes or after 15 minutes.
+                  Derive mode only. Enabled builds the derived objects. Disabled: the Firewall's Policy Generation is off.
+                  Blocked: a fabric prerequisite is missing, such as a router that is not EVPNVXLAN (see reasons).
+                  Rejected: EDA refused them; retried when the translation changes or after 15 minutes.
                 type: string
               groups:
                 items:

@@ -1,5 +1,10 @@
 # Changelog
 
+## v1.6.1
+
+- Generation Blocked: the Microsegmentation App puts group-based policy under each VRF's bgp-evpn instance, so every router of a targeted virtual network must be type EVPNVXLAN. A Simple router (all four pan-d3l VRFs) is reported as ROUTER_NOT_EVPN with the router name, and nothing is attempted. The translation stays on the report as a preview
+- A refused derive is now detected. A report write is accepted by Kubernetes at once and EDA commits it afterwards, so v1.6.0 never saw the failure (live: two FAILED transactions, then the source stayed Disabled). The collector now checks that the source status shows the Enabled translation within 30 seconds and otherwise rewrites the report as Rejected with DERIVE_REJECTED
+
 ## v1.6.0
 
 - Firewall `spec.policyGeneration` Enabled or Disabled, default Disabled. It is the app's switch for auto generation: a derive-mode source builds Microsegmentation App objects only when its Firewall says Enabled. Disabled keeps the translation on the report as a preview, adds POLICY_GENERATION_DISABLED, and removes anything already built. Report and source status carry `generation` (Enabled, Disabled, Rejected); new Generation column

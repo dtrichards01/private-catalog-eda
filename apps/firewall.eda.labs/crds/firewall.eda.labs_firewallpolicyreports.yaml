@@ -127,6 +127,7 @@ spec:
                 properties:
                   profile: *id001
                   hash: *id001
+                  blockers: *id003
                   groupTags:
                     type: array
                     items:
