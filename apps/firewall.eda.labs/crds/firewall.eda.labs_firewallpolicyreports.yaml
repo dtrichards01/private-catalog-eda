@@ -26,15 +26,11 @@ spec:
           spec:
             type: object
             properties:
-              source: *id001
               firewall: *id001
               vendor: *id001
-              mode: *id001
               managementMode: *id001
               managementScope: *id001
               scopeKind: *id001
-              virtualNetwork: *id001
-              serviceTarget: *id001
               exportTag: *id001
               exportMarker: *id001
               generation: *id001
@@ -45,6 +41,9 @@ spec:
               correlationId: *id001
               capturedAt: *id001
               lastSuccessfulRevision: *id001
+              virtualNetworks: &id003
+                type: array
+                items: *id001
               snapshot:
                 type: object
                 properties:
@@ -59,9 +58,7 @@ spec:
                   referencedObjectsComplete: *id002
                   effectiveOrderComplete: *id002
                   membershipReadComplete: *id002
-                  problems: &id003
-                    type: array
-                    items: *id001
+                  problems: *id003
               reasons: *id003
               summary:
                 type: object
@@ -80,10 +77,11 @@ spec:
                   type: object
                   properties:
                     addressGroup: *id001
-                    tag: *id001
                     groupTag: *id001
+                    dynamic: *id002
                     filter: *id001
                     state: *id001
+                    virtualNetworks: *id003
                     members:
                       type: array
                       items:
@@ -128,24 +126,6 @@ spec:
                   profile: *id001
                   hash: *id001
                   blockers: *id003
-                  groupTags:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        name: *id001
-                        scope: *id001
-                        description: *id001
-                        existing: *id002
-                  associations:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        name: *id001
-                        groupTag: *id001
-                        vlans: *id003
-                        bridgeInterfaces: *id003
                   policy:
                     type: object
                     properties:
@@ -169,11 +149,15 @@ spec:
                             sourcePortNumber: *id004
                             bidirectional: *id002
             required:
-            - source
             - firewall
           status:
             type: object
             properties:
               message: *id001
+              generation: *id001
+              derivedHash: *id001
+              policy: *id001
+              entries: *id004
+              translated: *id004
     subresources:
       status: {}

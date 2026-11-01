@@ -94,11 +94,17 @@ spec:
               policyGeneration:
                 default: Disabled
                 description: |-
-                  Enabled lets policy sources on this firewall in derive mode build Microsegmentation App objects from its rules.
-                  Disabled holds every source at observe and removes what was built.
+                  Enabled builds one MicroSegmentationPolicy, fw-<name>, from the rules tagged eda-export-to-gbp that map to existing GroupTags.
+                  Disabled keeps the translation as a preview in the Firewall Policy Report and removes the policy.
+                  GroupTags and Association Policies are never built: they stay with the Microsegmentation App.
                 enum:
                 - Enabled
                 - Disabled
+                type: string
+              policyScope:
+                description: The vsys (Palo Alto) or VDOM (FortiGate) whose security
+                  policy is read. Empty reads vsys1 or root.
+                pattern: ^[A-Za-z0-9_-]{1,31}$
                 type: string
               vendor:
                 enum:
