@@ -167,6 +167,7 @@ spec:
                             forward: *id001
                             destinationPortNumber: *id004
                             sourcePortNumber: *id004
+                            bidirectional: *id002
             required:
             - source
             - firewall

@@ -1,4 +1,4 @@
-# PAN policy to EDA microsegmentation
+# Firewall policy to EDA microsegmentation
 
 Companion to test plan v0.18 and readiness checklist v0.21. This page says
 what the lab app does today, how a Palo Alto rule becomes an EDA
@@ -6,14 +6,76 @@ microsegmentation policy, and the lab evidence for each checklist gate.
 Status values are the checklist's own. Only the gate owners can record PASS,
 so evidenced gates are marked "lab evidence" and stay OPEN on the checklist.
 
-## What runs today
+## What runs today (v1.6.1)
 
-v1.4.0 is observe only. It discovers and classifies. It does not create
-GroupTags, AssociationPolicies, or MicroSegmentationPolicies, and it does
-not change the firewall. The Microsegmentation app is installed on EDA #2,
-but no object of any of its kinds exists in any namespace, including no
-`GroupTagPoolSetup`. That is why the fabric shows nothing: no step that
-writes to it has been built or authorised yet.
+The process is: rules are defined on the firewall, the Firewall app
+translates them, and the Microsegmentation app builds the objects. Nothing
+is reinterpreted on the way, and the built objects are derived (read-only)
+resources of the Firewall app.
+
+1. The collector reads the committed rulebase through the vendor API and
+   classifies every rule marked `eda-export-to-gbp`.
+2. With the FirewallPolicySource in `mode: derive`, it translates the rules
+   the built-in profile `microseg-1to1/1` can express one-for-one, and writes
+   the translation into the FirewallPolicyReport (`spec.derived`).
+3. The report config intent emits one GroupTag per used binding, one
+   AssociationPolicy per binding (on its named VLANs or bridge interfaces),
+   and one MicroSegmentationPolicy `fwpol-<source>`. It does this only when
+   the report says `generation: Enabled`. The Microsegmentation app builds
+   them on the nodes. In the EDA UI they show as derived from the report and
+   cannot be edited.
+4. Every firewall commit changes the snapshot, and therefore the
+   translation. The next report write replaces the derived set, and EDA
+   removes whatever is no longer emitted.
+
+There are two switches, and both must be on:
+
+| Switch | Where | Values | Effect when off |
+|--------|-------|--------|-----------------|
+| Policy Generation | Firewall `spec.policyGeneration` | Enabled, Disabled (default) | The translation is kept on the report as a preview; nothing is built, and anything built is removed. Reason POLICY_GENERATION_DISABLED. |
+| Mode | FirewallPolicySource `spec.mode` | observe (default), derive | observe: no translation at all. |
+
+`status.generation` on the source says what happened:
+
+| Generation | Meaning |
+|------------|---------|
+| Enabled | EDA committed the derived objects. |
+| Disabled | The Firewall's Policy Generation is off. Preview only. |
+| Blocked | A fabric prerequisite is missing, and nothing is attempted. Today the check is that every router of a targeted virtual network is EVPNVXLAN, because the Microsegmentation app writes group-based policy under the VRF's bgp-evpn instance (ROUTER_NOT_EVPN). |
+| Rejected | EDA refused the transaction. DERIVE_REJECTED gives the reason. The same translation is retried after 15 minutes; a changed one is tried on the next poll. |
+
+Live, 2026-11-01, clab-pan-d3l: the source is in derive. The translation
+has 3 GroupTags (`red`, `blue`, `green`, Global, because three VNETs are in
+scope), 3 AssociationPolicies on VLANs `pan-inside`, `pan-outside` and
+`fg-inside`, and one policy with 3 entries: red to blue TCP 80 Accept, red
+to blue TCP 443 Accept, red to green Drop. With Policy Generation Enabled
+it is Blocked, because all four pan-d3l VRFs are `type: Simple`. The
+Firewall is left Disabled. Before v1.6.1 the same translation was sent to
+EDA and refused, with
+`.network-instance{pan-inside-vrf}.protocols.bgp-evpn.bgp-instance{1}:
+cannot update object that does not exist` on leaf1 and leaf2. That
+transaction was atomic, so the fabric did not change. Enforcement is shown
+in `clab-srl-leaf-spine-dcgw`, where the routers are EVPNVXLAN.
+
+## Vendor commonality
+
+Everything after normalisation (identity checks, classification, the
+profile, translation, generation) is shared. Each vendor supplies a reader,
+a normaliser and a profile:
+
+| | Palo Alto (reader ships) | FortiGate (reader not yet) |
+|-|--------------------------|----------------------------|
+| API | PAN-OS XML API, `pan-os-xml-api-direct` | FortiOS REST API, `fortios-rest-api-direct` |
+| Scope | vsys, default `vsys1` | VDOM, default `root` |
+| Export marker | Rule tag `eda-export-to-gbp` | Policy section label (`global-label`) `eda-export-to-gbp`. FortiOS 7 policies have no tags, and the section keeps the exported rules as one ordered block. |
+| Identity | Dynamic address group whose filter is exactly one controlled tag; runtime members from the firewall | Address group (`firewall addrgrp`); members are its address objects |
+| Revision | Config audit version before and after the read | To be decided (config revision or a checksum of the read) |
+| Actions | allow, deny, drop | accept, deny |
+| Not translatable | App-ID, User-ID, URL category, HIP, profiles | Application control, users and groups, ISDB, UTM profiles, NAT |
+
+A FortiGate source today reports UNAVAILABLE with
+VENDOR_READER_NOT_IMPLEMENTED, and its status shows `vdom`,
+`section-label` and the FortiOS API.
 
 ## From a PAN rule to an EDA policy
 
@@ -31,11 +93,11 @@ identities EDA owns:
 |------|--------------|-------|-------|
 | 1. Discover | Read the vsys rules, objects, DAG membership, and revisions as one snapshot. | Firewall app collector | Built (v1.4.0) |
 | 2. Classify | Each rule gets classification, candidate, inspection requirement, translation state, path state, and bypass authorisation, with reasons. | Firewall app collector | Built (v1.4.0) |
-| 3. Identity | Each controlled PAN DAG maps to one EDA GroupTag, and each DAG member resolves to the EDA attachment the endpoint sits on, in the mapped virtual network. The GroupTag and its AssociationPolicy are EDA-owned and created through the Microsegmentation app. | EDA operator, Microsegmentation app | Not built. No GroupTags in the lab. |
-| 4. Compatibility | A CompatibilityProfile, bound to the exact Firewall app, Microsegmentation app, EDA, and SR Linux builds, says which L3/L4 dimensions the fabric enforces equivalently. Without it nothing is FABRIC_ENFORCEABLE. | Firewall app, evidence from the dcgw lab | Not built (decision: profile later, as a ConfigMap) |
-| 5. Propose | One deterministic, ordered MicroSegmentationPolicy request per scope mapping, in PAN order, with a change ID, the source revision, and a request hash. NGFW_REQUIRED rules produce a PathRequirement only, never a GBP allow. | Firewall app | Not built |
-| 6. Review and apply | A person approves the exact change ID, revision, and hash. The apply goes through the Microsegmentation app contract only. No direct EDA or SR Linux writer. | Microsegmentation app contract | Blocked: contract not supplied (gate C) |
-| 7. Drift | Compare MicrosegmentationPolicyState with the applied request; report APPLIED or DRIFTED. Source absence never deletes. | Firewall app | Not built |
+| 3. Identity | Each controlled address group maps to one EDA GroupTag. Each binding names its VLANs or bridge interfaces, and every member must sit in a subnet of their bridge domain (MEMBER_OUTSIDE_TARGETS, TARGET_SHARED, TARGET_OUT_OF_SCOPE). In derive mode the GroupTag is built unless an operator already made it. | Firewall app | Built (v1.5.0) |
+| 4. Compatibility | The built-in profile `microseg-1to1/1`: IPv4, TCP/UDP destination port or range plus source port, allow or deny, one group to one group. Everything else stays NGFW_REQUIRED or UNSUPPORTED. | Firewall app | Built (v1.5.0). Not yet bound to builds by evidence. |
+| 5. Translate | One ordered MicroSegmentationPolicy per source, in rule order, with the source revision and a hash. NGFW_REQUIRED rules produce no GBP allow. | Firewall app | Built (v1.5.0) |
+| 6. Approve and build | The user decision replaces per-change review: switching the source to derive and the Firewall's Policy Generation to Enabled is the approval, and changes then follow the firewall. The objects are built as derived resources by the Microsegmentation app. No direct SR Linux writer. | Firewall app, Microsegmentation app | Built (v1.6.1). Blocked in pan-d3l (Simple routers). |
+| 7. Drift | Derived resources cannot be edited, and EDA re-asserts them on every transaction. Source absence never deletes: an unavailable read keeps the last good translation. | EDA | By construction |
 
 For the lab colour rules, step 5 would produce for `pan-inside`:
 
@@ -47,22 +109,20 @@ For the lab colour rules, step 5 would produce for `pan-inside`:
 
 Default deny stays owned by the Microsegmentation app (gate F).
 
-### Why the lab rules are not eligible
+### What the lab still cannot do
 
-- **No identities.** GroupTags `red`, `blue`, `green`, and `secure` do not
-  exist, so every DAG reports `GROUPTAG_NOT_FOUND` and the rules
-  `IDENTITY_UNRESOLVED`.
-- **Wrong scope for the lab shape.** In `pan-d3l`, client1 (RED) is in
-  `pan-inside`, client2 (BLUE) in `pan-outside`, and client3 (GREEN) behind
-  FortiGate 1 in `fg-inside`. Each zone is its own virtual network, routed
-  through the firewall. A fabric policy scoped to `pan-inside` cannot match
-  members in another virtual network, so they are `CROSS_SCOPE_MEMBER`.
-  Test 5 needs endpoints in one virtual network with east-west traffic on
-  the fabric. That is the reason for the planned move to
-  `clab-srl-leaf-spine-dcgw`.
-- **Prefix members.** SECURE is `10.31.2.0/24`. A prefix maps to a static
-  route or a whole bridge domain, not one endpoint (`PREFIX_MEMBER_NOT_IN_V1`).
-- **No profile.** `COMPATIBILITY_UNVALIDATED` on every candidate.
+- **Simple routers.** All four pan-d3l VRFs are `type: Simple`, with no
+  bgp-evpn instance, so generation is Blocked.
+- **Routed through the firewall.** In `pan-d3l`, RED, BLUE and GREEN sit in
+  separate virtual networks routed through the firewalls, so a tag set on
+  ingress does not survive the firewall hop. Enforcement (Test 5) needs
+  endpoints in EVPN virtual networks with traffic on the fabric, which is
+  why it moves to `clab-srl-leaf-spine-dcgw`.
+- **Prefix members.** SECURE is `10.31.2.0/24` and overlaps BLUE. It is left
+  unbound in derive mode, so `EDA-RED-to-SECURE-ALLOW` is not translated.
+- **Three colour rules translate.** The other six exported rules stay
+  UNSUPPORTED or NGFW_REQUIRED for their own reasons (App-ID, negation,
+  disabled, uncontrolled identities).
 
 ## Gate evidence (v0.21)
 
@@ -87,13 +147,14 @@ source-health gates.
 | E | Profile bound to builds; unknown never equivalent | No profile ships; every candidate is UNSUPPORTED with COMPATIBILITY_UNVALIDATED. | Lab evidence for "unknown never equivalent"; profile OPEN |
 | E | PAN-only semantics never produce a broad allow | App-ID, User-ID, URL, HIP, and profile rules are NGFW_REQUIRED; `any` is UNSUPPORTED. | Lab evidence |
 | F | Ordered policy set, NGFW_REQUIRED as PathRequirement only | Not built. | OPEN |
-| G | Observe works, automatic disabled | `mode` enum is `observe` only. | Lab evidence |
+| G | Observe works, automatic disabled | Changed by user decision: automatic is allowed behind two switches, source `mode: derive` and Firewall `policyGeneration: Enabled`, both off by default. Live: Disabled and Blocked build nothing. | Lab evidence (requirement changed) |
 | G | Outage, partial, empty DAG, absence distinguished; absence never deletes | UNAVAILABLE keeps the last good result; STALE_SOURCE; EMPTY_MEMBERSHIP; nothing is deleted. | Lab evidence |
 | H | Independent status dimensions; bypass never authorised by apply | Separate fields per rule; `bypassAuthorisation` is always NOT_AUTHORISED; `pathState` NOT_MANAGED. | Lab evidence |
 | I | Correlation IDs, structured logs | `correlationId` per evaluation; JSON logs per source. No metrics. | OPEN (metrics) |
 | I | Secrets never in status or logs; TLS validated | Palo Alto URL no longer leaks the key in errors (v1.4.0, with test). TLS verification is off in the lab (`insecureSkipVerify: true` on both Firewalls). | FAIL until TLS trust is configured |
 | I | Least-privilege RBAC | ClusterRole `eda-fwstatus`: get/list on the kinds it reads, create/update only on reports. Cluster-wide, not per namespace. | OPEN |
 
-Recommended observe-only decision: **OBSERVE/REVIEW ONLY** remains blocked
-on D (identities) and I (TLS). Reviewed apply is blocked on C, E, F, and G.
-Automatic mode is disabled as required.
+Recommended decision: discovery and translation are lab-evidenced. Building
+on the fabric is blocked in pan-d3l by its Simple routers and in general by
+I (TLS) and C (no versioned Microsegmentation contract; the app targets its
+v1alpha1 CRDs directly). Enforcement evidence comes from the dcgw lab.

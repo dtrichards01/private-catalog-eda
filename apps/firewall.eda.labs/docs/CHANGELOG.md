@@ -1,5 +1,10 @@
 # Changelog
 
+## v1.6.2
+
+- Each derived MicroSegmentationPolicy entry sets `bidirectional` explicitly: true for Accept, so return traffic passes as on the stateful firewall; false for Drop, which the firewall applies one way only. v1.6.1 left it unset, and the Microsegmentation App defaulted every entry to true. That also dropped green to red, which the Palo Alto rule does not
+- First live build, 2026-11-01, clab-pan-d3l. The four zone routers were changed from Simple to EVPNVXLAN (`pan-d3l-vnets.yaml`, `scripts/fw-160-evpn.sh`), and Policy Generation set to Enabled. GroupTags red, blue and green, three AssociationPolicies and `fwpol-palo-alto-vsys1` were built as derived resources of the report, and both firewall paths still ping
+
 ## v1.6.1
 
 - Generation Blocked: the Microsegmentation App puts group-based policy under each VRF's bgp-evpn instance, so every router of a targeted virtual network must be type EVPNVXLAN. A Simple router (all four pan-d3l VRFs) is reported as ROUTER_NOT_EVPN with the router name, and nothing is attempted. The translation stays on the report as a preview

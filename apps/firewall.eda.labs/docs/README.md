@@ -249,15 +249,27 @@ client2 `10.31.2.10` is BLUE, client3 `10.21.1.10` is GREEN, and
 and `EDA-RED-to-GREEN-DENY`. The seven earlier fixtures follow, then the
 lab allow-all, so traffic is unchanged.
 
-Live result on 2026-11-01, PAN config revision 19: 11 rules, 9 exported, 9
-unsupported, 0 eligible. The three colour rules carry candidate
-`FABRIC_ENFORCEABLE` or `FABRIC_ENFORCEABLE_DENY` and are blocked by
-`IDENTITY_UNRESOLVED` (no GroupTags exist in the namespace) and
-`COMPATIBILITY_UNVALIDATED` (no profile). BLUE, GREEN, and SECURE are also
-`CROSS_SCOPE_MEMBER`: their members sit in `pan-outside` and `fg-inside`,
-not `pan-inside`. No GroupTag, AssociationPolicy, or
-MicroSegmentationPolicy exists in any namespace, and the app creates none.
-See [POLICY-GATES.md](POLICY-GATES.md).
+From v1.5.0 the source can be in `mode: derive`. The groups name their
+VLANs, and `additionalVirtualNetworks` adds `pan-outside` and `fg-inside`.
+SECURE is unbound because it overlaps BLUE. In derive mode the collector
+translates the rules into Microsegmentation App objects, and the report's
+config intent builds them as derived, read-only resources. From v1.6.0 that
+also needs the Firewall's `spec.policyGeneration: Enabled`. This is the
+app's auto-generation switch, and it defaults to Disabled:
+
+```bash
+kubectl -n clab-pan-d3l patch firewalls.firewall.eda.labs palo-alto --type merge -p '{"spec":{"policyGeneration":"Enabled"}}'
+```
+
+Live result on 2026-11-01, PAN config revision 19: 11 rules, 9 exported, 2
+eligible. `EDA-RED-to-BLUE-ALLOW` becomes two Accept entries (TCP 80, 443)
+and `EDA-RED-to-GREEN-DENY` one Drop entry. Source `status.generation` is
+Disabled, because the Firewall is left Disabled. With Enabled it is Blocked,
+since the pan-d3l VRFs are `type: Simple` and microsegmentation needs
+EVPNVXLAN routers (ROUTER_NOT_EVPN). No microsegmentation object exists in
+the namespace. The model is vendor neutral: a FortiGate source reports its
+VDOM scope and section-label marker, and is UNAVAILABLE until the FortiGate
+reader ships. See [POLICY-GATES.md](POLICY-GATES.md).
 
 ## What the UI shows
 
