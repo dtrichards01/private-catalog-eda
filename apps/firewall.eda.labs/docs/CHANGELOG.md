@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.6.0
+
+- Firewall `spec.policyGeneration` Enabled or Disabled, default Disabled. It is the app's switch for auto generation: a derive-mode source builds Microsegmentation App objects only when its Firewall says Enabled. Disabled keeps the translation on the report as a preview, adds POLICY_GENERATION_DISABLED, and removes anything already built. Report and source status carry `generation` (Enabled, Disabled, Rejected); new Generation column
+- When EDA refuses the derived objects (for example a VRF without bgp-evpn, which the Microsegmentation App needs), the collector rewrites the report with generation Rejected and DERIVE_REJECTED naming the node path and error, so the report still lands and the fabric is untouched. The same translation is retried after 15 minutes; a changed one at once. v1.5.0 retried a refused transaction on every poll
+- Vendor-neutral policy model. Each vendor has a profile: management API, scope kind (Palo Alto vsys, FortiGate VDOM, default vsys1 or root), export marker (Palo Alto rule tag, FortiGate policy section label `global-label` named `eda-export-to-gbp`) and group identity (Palo Alto dynamic address group with a one-tag filter, FortiGate address group). Rules carry a section label, and `accept` is an allow action. Everything after normalisation is shared. The FortiGate reader is not in this release, so a FortiGate source reports UNAVAILABLE with VENDOR_READER_NOT_IMPLEMENTED. Source scope accepts VDOM names, `tag` is optional (Palo Alto only), and the report and source status show vendor, scopeKind and exportMarker
+
 ## v1.5.0
 
 - FirewallPolicySource mode `derive`. Setting it is the one approval: the Palo Alto rules then become Microsegmentation App objects and follow every PAN commit. The collector translates, under the built-in profile `microseg-1to1/1`, each enabled rule tagged `eda-export-to-gbp` whose source and destination are one bound address group each, IPv4, service any or TCP/UDP destination port or range (plus source port), allow or deny. One MicroSegmentationPolicy entry per protocol and port, in PAN rule order. Applications, users, URL, zones, negation, profiles and anything else stay NGFW_REQUIRED or UNSUPPORTED and are never translated

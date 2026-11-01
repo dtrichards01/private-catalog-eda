@@ -21,6 +21,9 @@ spec:
     - jsonPath: .spec.mode
       name: Mode
       type: string
+    - jsonPath: .status.generation
+      name: Generation
+      type: string
     - jsonPath: .spec.scope
       name: Scope
       type: string
@@ -68,11 +71,13 @@ spec:
             type: object
           spec:
             description: |-
-              FirewallPolicySourceSpec selects the committed Palo Alto security policy of
-              one vsys. Only rules tagged eda-export-to-gbp are evaluated. Observe mode
-              reads and reports. Derive mode also builds the Microsegmentation App
-              GroupTags, AssociationPolicies and one MicroSegmentationPolicy from the
-              rules the built-in profile translates one for one. They are derived,
+              FirewallPolicySourceSpec selects the committed security policy of one
+              firewall scope: a Palo Alto vsys or a FortiGate VDOM. Only rules marked
+              eda-export-to-gbp are evaluated: a rule tag on Palo Alto, the policy
+              section label on FortiGate. Observe mode reads and reports. Derive mode
+              also builds the Microsegmentation App GroupTags, AssociationPolicies and one
+              MicroSegmentationPolicy from the rules the built-in profile translates one
+              for one, when the Firewall has policy generation Enabled. They are derived,
               read-only resources of the policy report and follow the firewall on every
               commit. The firewall itself is never changed.
             properties:
@@ -83,19 +88,22 @@ spec:
                   type: string
                 type: array
               firewall:
-                description: Palo Alto Firewall in this namespace. Its management
-                  URL and credential Secret are reused.
+                description: |-
+                  Firewall in this namespace. Its vendor, management URL and credential Secret are reused.
+                  The Palo Alto reader ships now. The FortiGate reader is not in this release, so a FortiGate source reports UNAVAILABLE.
                 type: string
               groups:
                 description: |-
                   Controlled taxonomy: each Palo Alto dynamic address group, the one tag its filter must be,
                   and the existing EDA GroupTag it stands for. Other groups and tags are ignored.
                 items:
-                  description: PolicyGroupBinding maps one controlled dynamic address
+                  description: PolicyGroupBinding maps one controlled firewall address
                     group to an EDA GroupTag.
                   properties:
                     addressGroup:
-                      pattern: ^[A-Za-z0-9._-]{1,63}$
+                      description: Palo Alto dynamic address group, or FortiGate address
+                        group.
+                      pattern: ^[A-Za-z0-9._ -]{1,79}$
                       type: string
                     bridgeInterfaces:
                       description: Bridge interfaces whose traffic gets this tag.
@@ -108,6 +116,8 @@ spec:
                       pattern: ^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$
                       type: string
                     tag:
+                      description: 'Palo Alto: the one tag the dynamic group''s filter
+                        must be. FortiGate: not used.'
                       pattern: ^[A-Za-z0-9._-]{1,127}$
                       type: string
                     vlans:
@@ -119,21 +129,21 @@ spec:
                   required:
                   - addressGroup
                   - groupTag
-                  - tag
                   type: object
                 type: array
               mode:
                 default: observe
                 description: observe reads, normalises and classifies. derive also
-                  builds the Microsegmentation App objects; setting it is the approval.
+                  builds the Microsegmentation App objects when the Firewall's Policy
+                  Generation is Enabled.
                 enum:
                 - observe
                 - derive
                 type: string
               scope:
-                default: vsys1
-                description: Palo Alto vsys that holds the rulebase.
-                pattern: ^[a-z0-9]+$
+                description: Palo Alto vsys or FortiGate VDOM that holds the rulebase.
+                  Empty means vsys1 or root.
+                pattern: ^[A-Za-z0-9_-]{1,31}$
                 type: string
               serviceTarget:
                 description: Router or bridge domain in the Virtual Network that fabric
@@ -177,8 +187,16 @@ spec:
                 required:
                 - entries
                 type: object
+              exportMarker:
+                description: rule-tag (Palo Alto) or section-label (FortiGate).
+                type: string
               exported:
                 type: integer
+              generation:
+                description: |-
+                  Derive mode only. Enabled builds the derived objects, Disabled means the Firewall's Policy Generation is off,
+                  Rejected means EDA refused them (see reasons) and they are retried when the translation changes or after 15 minutes.
+                type: string
               groups:
                 items:
                   description: PolicyGroupStatus is one group binding after identity
@@ -254,12 +272,17 @@ spec:
                       type: string
                   type: object
                 type: array
+              scopeKind:
+                description: vsys or vdom.
+                type: string
               sourceHealth:
                 description: OK, STALE_SOURCE when the read was incomplete or a commit
                   landed during it, or UNAVAILABLE.
                 type: string
               unsupported:
                 type: integer
+              vendor:
+                type: string
             required:
             - exported
             - ngfwRequired

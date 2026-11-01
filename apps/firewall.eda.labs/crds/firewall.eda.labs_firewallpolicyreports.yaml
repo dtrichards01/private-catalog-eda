@@ -28,12 +28,17 @@ spec:
             properties:
               source: *id001
               firewall: *id001
+              vendor: *id001
               mode: *id001
               managementMode: *id001
               managementScope: *id001
+              scopeKind: *id001
               virtualNetwork: *id001
               serviceTarget: *id001
               exportTag: *id001
+              exportMarker: *id001
+              generation: *id001
+              generationRejectedAt: *id001
               compatibilityProfile: *id001
               sourceHealth: *id001
               message: *id001

@@ -91,6 +91,15 @@ spec:
                 required:
                 - url
                 type: object
+              policyGeneration:
+                default: Disabled
+                description: |-
+                  Enabled lets policy sources on this firewall in derive mode build Microsegmentation App objects from its rules.
+                  Disabled holds every source at observe and removes what was built.
+                enum:
+                - Enabled
+                - Disabled
+                type: string
               vendor:
                 enum:
                 - paloalto
