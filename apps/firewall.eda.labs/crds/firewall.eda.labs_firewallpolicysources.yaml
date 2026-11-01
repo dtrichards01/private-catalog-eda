@@ -18,6 +18,9 @@ spec:
     - jsonPath: .spec.firewall
       name: Firewall
       type: string
+    - jsonPath: .spec.mode
+      name: Mode
+      type: string
     - jsonPath: .spec.scope
       name: Scope
       type: string
@@ -38,6 +41,9 @@ spec:
       type: integer
     - jsonPath: .status.unsupported
       name: Unsupported
+      type: integer
+    - jsonPath: .status.derived.entries
+      name: Derived
       type: integer
     name: v1alpha1
     schema:
@@ -63,10 +69,19 @@ spec:
           spec:
             description: |-
               FirewallPolicySourceSpec selects the committed Palo Alto security policy of
-              one vsys for discovery. Only rules tagged eda-export-to-gbp are evaluated.
-              Observe mode reads and reports. It does not change the firewall, EDA
-              microsegmentation, or the fabric.
+              one vsys. Only rules tagged eda-export-to-gbp are evaluated. Observe mode
+              reads and reports. Derive mode also builds the Microsegmentation App
+              GroupTags, AssociationPolicies and one MicroSegmentationPolicy from the
+              rules the built-in profile translates one for one. They are derived,
+              read-only resources of the policy report and follow the firewall on every
+              commit. The firewall itself is never changed.
             properties:
+              additionalVirtualNetworks:
+                description: Further Virtual Networks members may belong to. The derived
+                  policy targets all of them and its GroupTags are Global.
+                items:
+                  type: string
+                type: array
               firewall:
                 description: Palo Alto Firewall in this namespace. Its management
                   URL and credential Secret are reused.
@@ -82,13 +97,25 @@ spec:
                     addressGroup:
                       pattern: ^[A-Za-z0-9._-]{1,63}$
                       type: string
+                    bridgeInterfaces:
+                      description: Bridge interfaces whose traffic gets this tag.
+                      items:
+                        type: string
+                      type: array
                     groupTag:
-                      description: Must already exist in this namespace. Discovery
-                        never creates one.
+                      description: Observe mode requires it to exist. Derive mode
+                        reuses an existing one or builds it.
+                      pattern: ^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$
                       type: string
                     tag:
                       pattern: ^[A-Za-z0-9._-]{1,127}$
                       type: string
+                    vlans:
+                      description: Inline VLANs of the Virtual Networks whose traffic
+                        gets this tag. Every member must sit in one of their subnets.
+                      items:
+                        type: string
+                      type: array
                   required:
                   - addressGroup
                   - groupTag
@@ -97,10 +124,11 @@ spec:
                 type: array
               mode:
                 default: observe
-                description: observe reads, normalises and classifies. Reviewed apply
-                  needs the Microsegmentation App contract and is not in this release.
+                description: observe reads, normalises and classifies. derive also
+                  builds the Microsegmentation App objects; setting it is the approval.
                 enum:
                 - observe
+                - derive
                 type: string
               scope:
                 default: vsys1
@@ -122,10 +150,33 @@ spec:
           status:
             description: FirewallPolicySourceStatus is the summary of the latest FirewallPolicyReport.
             properties:
+              compatibilityProfile:
+                type: string
               complete:
                 type: boolean
               correlationId:
                 type: string
+              derived:
+                description: Present in derive mode.
+                properties:
+                  associations:
+                    items:
+                      type: string
+                    type: array
+                  entries:
+                    type: integer
+                  groupTags:
+                    items:
+                      type: string
+                    type: array
+                  hash:
+                    description: Changes whenever the derived objects change.
+                    type: string
+                  policy:
+                    type: string
+                required:
+                - entries
+                type: object
               exported:
                 type: integer
               groups:
@@ -154,6 +205,9 @@ spec:
                 type: string
               message:
                 type: string
+              mode:
+                description: Mode the report was produced in.
+                type: string
               ngfwRequired:
                 type: integer
               policyRevision:
@@ -180,6 +234,10 @@ spec:
                       description: FABRIC_ENFORCEABLE, FABRIC_ENFORCEABLE_DENY, NGFW_REQUIRED
                         or UNSUPPORTED.
                       type: string
+                    derivedEntries:
+                      description: MicroSegmentationPolicy entries built from this
+                        rule.
+                      type: integer
                     inspectionRequirement:
                       type: string
                     name:
@@ -190,6 +248,10 @@ spec:
                       items:
                         type: string
                       type: array
+                    translationState:
+                      description: PROPOSED, VALIDATED when derive mode translated
+                        it, or NOT_TRANSLATED.
+                      type: string
                   type: object
                 type: array
               sourceHealth:

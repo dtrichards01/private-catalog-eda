@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.5.0
+
+- FirewallPolicySource mode `derive`. Setting it is the one approval: the Palo Alto rules then become Microsegmentation App objects and follow every PAN commit. The collector translates, under the built-in profile `microseg-1to1/1`, each enabled rule tagged `eda-export-to-gbp` whose source and destination are one bound address group each, IPv4, service any or TCP/UDP destination port or range (plus source port), allow or deny. One MicroSegmentationPolicy entry per protocol and port, in PAN rule order. Applications, users, URL, zones, negation, profiles and anything else stay NGFW_REQUIRED or UNSUPPORTED and are never translated
+- New config intent on FirewallPolicyReport. In derive mode it emits a GroupTag per used binding (skipped if an operator already made one), an AssociationPolicy `fwpol-<source>-<grouptag>` on the binding's VLANs or bridge interfaces, and one MicroSegmentationPolicy `fwpol-<source>` over the source's virtual networks. They are derived resources of the report, read-only in the UI, labelled `firewall.eda.labs/policy-source`. Observe mode emits none, so going back to observe removes them
+- Group bindings name their targets (`vlans`, `bridgeInterfaces`). Every member IP must sit in a subnet of a target's bridge domain (MEMBER_OUTSIDE_TARGETS), targets must exist in scope (TARGET_NOT_FOUND, TARGET_OUT_OF_SCOPE), and two bindings on one target are both flagged TARGET_SHARED. A port of 0 is not translated, since it would widen the entry to every port
+- `additionalVirtualNetworks`: members may sit in further VNETs. With more than one VNET the derived GroupTags are Global
+- Source status shows the mode, the profile, the derived policy, entry count, GroupTags, AssociationPolicies and hash, and per rule the translation state and entry count. New Mode and Derived columns. Firewall Policy Reports appear under Firewalls in the UI
+
+## v1.4.1 (collector only)
+
+- Collector: Palo Alto interfaces are read with `show interface all` instead of `show interface hardware`. The hardware view has no address or zone, so observed address and zone were always empty on the Palo Alto and the v1.4.0 config state stayed Pending. The port state from the hw entry and the running address and zone from the logical interface are merged by name. A VLAN NIC is read back on its subinterface
+
 ## v1.4.0
 
 - New kinds FirewallPolicySource (config) and FirewallPolicyReport (status, written by the collector). A source names a firewall, a PAN vsys, an EDA virtual network and service target, and the PAN address group, tag and EDA GroupTag bindings. The collector reads the PAN security rules, objects, DAG membership and registered IPs through the XML API, read-only, and classifies each rule as FABRIC_ENFORCEABLE, FABRIC_ENFORCEABLE_DENY, NGFW_REQUIRED or UNSUPPORTED per test plan v0.18 section 18. Only enabled rules tagged exactly `eda-export-to-gbp` are eligible. No compatibility profile ships, so fabric candidates report UNSUPPORTED with COMPATIBILITY_UNVALIDATED and the candidate class. Nothing is written to the fabric or the firewall

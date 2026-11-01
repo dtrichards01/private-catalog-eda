@@ -135,14 +135,16 @@ and `fg2-remote`.
 
 ## Resources and intents
 
-Four resources:
+Six resources:
 
 | Resource | Role |
 |----------|------|
 | Firewall | One external firewall. Vendor is `paloalto` or `fortinet`. Management is the API URL and the credential Secret. Status has the state, health, a health reason naming each interface that is not up, and the tenants read from the firewall. A Firewall alone is monitoring only. |
-| Firewall Interface | One NIC. Classic sets Attachment and BGP. Advanced Networking sets the spine port, BGP, families, and services. Configure Firewall on writes to the firewall; off is observe only. |
+| Firewall Interface | One NIC. Classic sets Attachment and BGP. Advanced Networking sets the spine port, BGP, families, and services. Configure Firewall on writes to the firewall; off is observe only. Status `configState` says whether the firewall runs the spec (v1.4.0). |
 | Firewall Report | What the collector last read and wrote. The UI does not read this object directly. |
 | Firewall Inventory | One row per firewall port or tenant, written by the collector. The Firewall Interface name and Tenant dropdowns read it. |
+| Firewall Policy Source | Which Palo Alto vsys to read policy from, the EDA virtual network and service target it maps to, and the PAN address group, tag and EDA GroupTag bindings. Observe mode only (v1.4.0). |
+| Firewall Policy Report | The normalised PAN snapshot and the classification of every rule, written by the collector. Status only; a state intent copies the summary onto the source. |
 
 Every kind needs a `status` object in its OpenAPI schema, even one the UI
 does not list. If one kind has none, EDA cannot generate the app OpenAPI
@@ -153,7 +155,7 @@ query it, for example
 `.namespace.resources.cr.firewall_eda_labs.v1alpha1.firewall fields [ name, status.operationalState, status.health ]`.
 More queries are in [README.md](README.md).
 
-Five intents. The state scripts on Firewall and Firewall Interface do nothing, so they cannot overwrite the collector with a hardcoded Up.
+Six intents. The state scripts on Firewall and Firewall Interface do nothing, so they cannot overwrite the collector with a hardcoded Up.
 
 | Intent | Role |
 |--------|------|
@@ -161,7 +163,8 @@ Five intents. The state scripts on Firewall and Firewall Interface do nothing, s
 | Firewall state | No-op. Status comes from the report. |
 | Firewall Interface config | Checks the interface. Classic emits nothing on the fabric. Advanced Networking emits the spine default interface, address family policy, default BGP group, and default BGP peer, and checks each service's expected VNI against its bridge domain. |
 | Firewall Interface state | No-op. Status comes from the report. |
-| Firewall Report state | Copies the collector report onto the Firewall and each Firewall Interface. That is what the Firewalls page reads. |
+| Firewall Report state | Copies the collector report onto the Firewall and each Firewall Interface, including the config state. That is what the Firewalls page reads. |
+| Firewall Policy Report state | Copies the policy summary, groups, and rule verdicts onto the Firewall Policy Source. |
 
 ## Collector and the two APIs
 
@@ -175,8 +178,10 @@ Each poll, for each Firewall:
 4. Withdraw NICs recorded on a previous push and no longer live, and services a live NIC no longer lists. Remove the finalizer after that succeeds.
 5. For live NICs with Configure Firewall on: push the NIC, the eBGP neighbor, and the VXLAN services. Configure Firewall off writes nothing.
 6. Read health, interfaces, BGP state, ports, and tenants back from the API.
-7. Write a Firewall Report. The report state intent publishes that onto the UI.
-8. Sync the Firewall Inventory rows (ports and tenants) for the dropdowns.
+7. Compare that running state with each interface spec and set its config state (below).
+8. Write a Firewall Report. The report state intent publishes that onto the UI.
+9. Sync the Firewall Inventory rows (ports and tenants) for the dropdowns.
+10. For each Firewall Policy Source, read the Palo Alto policy, classify it, and write the Firewall Policy Report when it changed.
 
 The Firewall `spec.vendor` selects the API. Tenant selects where the push goes. Empty tenant is Palo Alto `vsys1` or FortiGate `root`.
 
@@ -187,6 +192,62 @@ FortiGate uses the REST API (`/api/v2`). The collector logs in and sends CMDB ca
 Tenants in Firewall status come from Palo Alto `vsys` entries and FortiGate `system/vdom`.
 
 A delete removes only a NIC the collector has recorded, on the next poll. The physical port stays. Palo Alto drops the address, zone member, BGP peer, VLAN unit, and `eda-ping` when nothing else uses it. FortiGate removes the VXLAN interfaces and EVPN instances first, then the advertised subnet, the neighbor, and the VLAN interface, or clears the address on an untagged port. `port1` is never cleared.
+
+## Apply confirmation
+
+EDA marks a Firewall Interface transaction done when the EDA side is
+rendered. That does not mean the firewall runs it: a Palo Alto commit takes
+about 3 minutes and can fail. From v1.4.0 the collector reads the running
+state back through the vendor API after each push and sets
+`status.configState`:
+
+| State | Meaning |
+|-------|---------|
+| NotManaged | Configure Firewall is off. Observe only. |
+| Pending | Not running yet. `configDetail` lists what is missing, for example `address 10.31.11.2/30, zone inside`. |
+| Committing | A Palo Alto commit job is queued or running, with its job ID. |
+| Applied | Address, zone, BGP peer, and VXLAN services match the running state. |
+| Verified | Applied, and the interface is Up (BGP Established when set). |
+| Failed | The apply call failed, or the commit job finished with FAIL. The vendor detail is shown. |
+| Removing | The interface is being deleted. |
+
+The read-back is the running state, not the candidate: Palo Alto
+`show interface all` and `show routing protocol bgp peer`, FortiGate
+`system/interface` and the BGP neighbor monitor. The ping profile is not
+part of the check. The collector records the job ID of each Palo Alto commit
+it starts (annotation `firewall.eda.labs/last-commit`) and reads that job
+while an interface is Pending. `pendingSince` restarts on each new
+`metadata.generation`. A change that has not applied within 10 minutes says
+`(not applied within 10m)`. This is status only; no EDA alarm is raised.
+
+## PAN policy discovery (observe only)
+
+A Firewall Policy Source points the collector at one Palo Alto vsys and one
+EDA virtual network and service target, and binds each PAN dynamic address
+group and its tag to an EDA GroupTag. Each poll the collector reads,
+read-only through the XML API: security rules, tags, addresses, address
+groups, services and service groups (vsys and shared), the DAG runtime
+membership, and registered IPs. It reads the config audit version before and
+after, and reports `STALE_SOURCE` when it changed during the read. An
+unreadable firewall keeps the last good result with health `UNAVAILABLE`.
+
+Each rule gets the test plan v0.18 section 18 dimensions: classification
+(`FABRIC_ENFORCEABLE`, `FABRIC_ENFORCEABLE_DENY`, `NGFW_REQUIRED`,
+`UNSUPPORTED`), the candidate class, inspection requirement, translation
+state, path state, and bypass authorisation, with reasons. A rule is
+eligible only when it is enabled, carries the exact tag `eda-export-to-gbp`,
+uses controlled DAG identities that resolve uniquely into the mapped
+virtual network, and has a complete context. App-ID, User-ID, URL and
+security profiles make it `NGFW_REQUIRED`. Negation, schedules, unknown
+fields, `any`, and ambiguous precedence make it `UNSUPPORTED`. No
+compatibility profile ships yet, so a rule that would be fabric enforceable
+reports `UNSUPPORTED` with `COMPATIBILITY_UNVALIDATED` and its candidate
+class.
+
+Nothing is written to the fabric or the firewall. No GroupTag, association,
+or microsegmentation policy is created. The path from a discovered rule to
+an EDA microsegmentation policy, and what each step still needs, is in
+[POLICY-GATES.md](POLICY-GATES.md).
 
 ## Limited feature set
 

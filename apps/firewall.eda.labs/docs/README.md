@@ -231,7 +231,33 @@ Credentials stay in Secrets (`username`, `password`). Examples use `replace-me`.
 
 Firewall communication is the vendor API only. Palo Alto uses the XML API
 (`/api/`). FortiGate uses the REST API (`/api/v2`). There is no firewall CLI
-or SSH session. These firewalls do not stream gNMI.
+or SSH session. These firewalls do not stream gNMI. A Palo Alto API error
+does not include the request URL, which carries the password or API key
+(fixed in v1.4.0).
+
+## PAN policy discovery
+
+`examples/07-policy-source.yaml` (`palo-alto-vsys1`) is applied in
+`clab-pan-d3l`. It maps vsys1 to virtual network `pan-inside`, service
+target `pan-inside-vrf`, and binds the PAN DAGs `EDA-RED`, `EDA-BLUE`,
+`EDA-GREEN`, and `EDA-SECURE` (tags `eda-colour-*`) to GroupTags `red`,
+`blue`, `green`, and `secure`. The Palo Alto fixtures are
+`scripts/fw-pan-policy-fixtures.sh colour`: client1 `10.31.1.10` is RED,
+client2 `10.31.2.10` is BLUE, client3 `10.21.1.10` is GREEN, and
+`10.31.2.0/24` is SECURE. Three rules at the top carry `eda-export-to-gbp`:
+`EDA-RED-to-BLUE-ALLOW` (tcp-web), `EDA-RED-to-SECURE-ALLOW` (tcp-8443),
+and `EDA-RED-to-GREEN-DENY`. The seven earlier fixtures follow, then the
+lab allow-all, so traffic is unchanged.
+
+Live result on 2026-11-01, PAN config revision 19: 11 rules, 9 exported, 9
+unsupported, 0 eligible. The three colour rules carry candidate
+`FABRIC_ENFORCEABLE` or `FABRIC_ENFORCEABLE_DENY` and are blocked by
+`IDENTITY_UNRESOLVED` (no GroupTags exist in the namespace) and
+`COMPATIBILITY_UNVALIDATED` (no profile). BLUE, GREEN, and SECURE are also
+`CROSS_SCOPE_MEMBER`: their members sit in `pan-outside` and `fg-inside`,
+not `pan-inside`. No GroupTag, AssociationPolicy, or
+MicroSegmentationPolicy exists in any namespace, and the app creates none.
+See [POLICY-GATES.md](POLICY-GATES.md).
 
 ## What the UI shows
 
@@ -272,6 +298,8 @@ Queries page, or with `edactl -n clab-pan-d3l query` in `eda-toolbox`:
 .namespace.resources.cr.firewall_eda_labs.v1alpha1.firewallinterface fields [ name, status.operationalState, status.message, status.services ]
 .namespace.resources.cr.firewall_eda_labs.v1alpha1.firewallreport fields [ name, spec.lastChecked, spec.health ]
 .namespace.resources.cr.firewall_eda_labs.v1alpha1.firewallinventory fields [ spec.firewall, spec.type, spec.value ]
+.namespace.resources.cr.firewall_eda_labs.v1alpha1.firewallinterface fields [ name, status.configState, status.configDetail, status.commitJob, status.appliedAt ]
+.namespace.resources.cr.firewall_eda_labs.v1alpha1.firewallpolicysource fields [ name, status.sourceHealth, status.policyRevision, status.exported, status.ngfwRequired, status.unsupported ]
 ```
 
 Add `where ( name = "fortigate-2" )` after the field list to pick one
@@ -324,7 +352,19 @@ resources: `ArrowUpCircle` for Up, `AlarmCircle` for Degraded,
 
 FortiGate interface state is CMDB `system/interface` field `status`: `up` or
 `down`. Palo Alto interface state is the operational XML `state` or
-`status`: `up` or `down`.
+`status`: `up` or `down`. The collector reads `show interface all` (v1.4.1).
+It lists each port under `hw` with its state and again under `ifnet` with
+its running address and zone, and the two are merged by name. v1.4.0 and
+earlier read `show interface hardware`, which has no address or zone, so
+the Palo Alto observed address was always empty.
+
+Separate from the operational state, `status.configState` says whether the
+firewall runs the interface spec: NotManaged, Pending, Committing, Applied,
+Verified, Failed, or Removing. The list shows it as the Config column. The
+states and the read-back are in [SUMMARY.md](SUMMARY.md#apply-confirmation).
+On 2026-11-01 all four live interfaces were Verified. The two FortiGate 2
+interfaces have been deleting since 2026-10-27 and wait for its API, so they
+have no config state.
 
 BGP remains a separate list, `status.bgp[].state`, with the session string
 from the API. That list does not replace the NIC rollup above. Palo Alto is
@@ -334,8 +374,10 @@ state name. `Established` is the up session. The other names those APIs
 return are `Idle`, `Connect`, `Active`, `OpenSent`, and `OpenConfirm`.
 
 Published in `dtrichards01/private-catalog-eda` as
-`ghcr.io/dtrichards01/private-eda-registry/firewall:v1.3.10`.
-The collector image is `ghcr.io/dtrichards01/private-eda-registry/fwstatus:v1.3.10`.
+`ghcr.io/dtrichards01/private-eda-registry/firewall:v1.4.0`
+(digest `sha256:0cfba2e90801b4564e8c8cc669efceabbec305bc42916908f614d27f06e28a0f`).
+The collector image is `ghcr.io/dtrichards01/private-eda-registry/fwstatus:v1.4.1`
+(digest `sha256:02f0c07fb046d66f76382ee64bd779bb96af51375b4ffa6c789c87a4da51a60f`).
 It polls every 30 seconds (`-interval 30s` in `deploy/collector.yaml`).
 The UI category is **Firewalls**. Firewall, Node, and Virtual Network are
 dropdowns. Interface under Attachment or Advanced Networking lists the

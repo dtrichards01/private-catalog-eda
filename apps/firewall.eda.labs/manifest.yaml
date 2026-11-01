@@ -7,7 +7,7 @@ spec:
   version: v1alpha1
   title: Firewalls
   description: Lab prototype for two firewall use cases. Not a product. Production EDA-to-firewall API is Push Pull Provider in EDA 26.12.1.
-  image: ghcr.io/dtrichards01/private-eda-registry/firewall:v1.4.0
+  image: ghcr.io/dtrichards01/private-eda-registry/firewall:v1.5.0
   author: dtrichards01
   gitPathPrefix: /
   supportedEndpoints:
@@ -23,7 +23,7 @@ spec:
     categories:
       - services
     ociSpecVersion: v1.0.0
-    appImageDigest: sha256:0cfba2e90801b4564e8c8cc669efceabbec305bc42916908f614d27f06e28a0f
+    appImageDigest: sha256:cb74d89ada7993074a3948ddaea5e2308fc8163c9f273e87706972569881539d
   components:
     - crd:
         path: firewall/crds/firewall.eda.labs_firewalls.yaml
@@ -114,11 +114,19 @@ spec:
         schema: firewall/openapiv3/eda_oas_firewall.eda.labs_firewallpolicyreports.json
         api:
           expose: readWrite
+        ui:
+          category: Firewalls
+          name: Firewall Policy Reports
         names:
           kind: FirewallPolicyReport
           listKind: FirewallPolicyReportList
           plural: firewallpolicyreports
           singular: firewallpolicyreport
+    - script:
+        path: firewall/intents/firewallpolicyreport/config_intent.py
+        type: config
+        trigger:
+          kind: FirewallPolicyReport
     - script:
         path: firewall/intents/firewallpolicyreport/state_intent.py
         type: state

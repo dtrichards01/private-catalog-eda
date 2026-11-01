@@ -115,7 +115,52 @@ spec:
                     pathState: *id001
                     bypassAuthorisation: *id001
                     requires: *id003
+                    derivedEntries: *id004
                     reasons: *id003
+              derived:
+                type: object
+                properties:
+                  profile: *id001
+                  hash: *id001
+                  groupTags:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        name: *id001
+                        scope: *id001
+                        description: *id001
+                        existing: *id002
+                  associations:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        name: *id001
+                        groupTag: *id001
+                        vlans: *id003
+                        bridgeInterfaces: *id003
+                  policy:
+                    type: object
+                    properties:
+                      name: *id001
+                      virtualNetworks: *id003
+                      entries:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            rule: *id001
+                            ruleId: *id001
+                            description: *id001
+                            sourceGroupTag: *id001
+                            destinationGroupTag: *id001
+                            protocol: *id001
+                            destinationPortRange: *id001
+                            sourcePortRange: *id001
+                            forward: *id001
+                            destinationPortNumber: *id004
+                            sourcePortNumber: *id004
             required:
             - source
             - firewall
