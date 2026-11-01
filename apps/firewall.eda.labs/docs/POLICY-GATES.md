@@ -6,7 +6,7 @@ microsegmentation policy, and the lab evidence for each checklist gate.
 Status values are the checklist's own. Only the gate owners can record PASS,
 so evidenced gates are marked "lab evidence" and stay OPEN on the checklist.
 
-## What runs today (v1.7.0)
+## What runs today (v1.7.1)
 
 Policy is defined on the firewall, learnt in EDA, translated onto the
 existing microsegmentation GroupTags, and built. The Microsegmentation app
@@ -49,7 +49,7 @@ There is one switch:
 | Enabled | The policy is built. |
 | Disabled | Policy Generation is off. Preview only. |
 | Blocked | A fabric prerequisite is missing, and nothing is attempted. Today the check is that every router of a targeted virtual network is EVPNVXLAN, because the Microsegmentation app writes group-based policy under the VRF's bgp-evpn instance (ROUTER_NOT_EVPN). |
-| Rejected | EDA refused the transaction, or did not commit it within the commit wait. DERIVE_REJECTED gives the reason. The same translation is retried after 15 minutes; a changed one is tried on the next poll. |
+| Rejected | EDA refused the transaction: two polls after the 30 second commit wait still did not see it committed on the report's status (v1.7.1; one slow commit, as after an app install, is not a refusal). DERIVE_REJECTED gives the reason. The same translation is retried after 15 minutes; a changed one is tried on the next poll. |
 
 Live, 2026-11-01, clab-pan-d3l: the operator objects are GroupTags
 `eda-red`, `eda-blue` and `eda-green` (Global) with AssociationPolicies on

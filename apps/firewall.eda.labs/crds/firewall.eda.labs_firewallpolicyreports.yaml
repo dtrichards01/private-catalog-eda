@@ -78,6 +78,7 @@ spec:
                   properties:
                     addressGroup: *id001
                     groupTag: *id001
+                    tagSource: *id001
                     dynamic: *id002
                     filter: *id001
                     state: *id001
@@ -126,6 +127,13 @@ spec:
                   profile: *id001
                   hash: *id001
                   blockers: *id003
+                  groupTags:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        name: *id001
+                        addressGroup: *id001
                   policy:
                     type: object
                     properties:
@@ -157,6 +165,7 @@ spec:
               generation: *id001
               derivedHash: *id001
               policy: *id001
+              groupTags: *id004
               entries: *id004
               translated: *id004
     subresources:

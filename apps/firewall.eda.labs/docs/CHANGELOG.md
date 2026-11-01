@@ -1,5 +1,14 @@
 # Changelog
 
+## v1.8.0
+
+- The firewall's address groups become GroupTags. Every address group an exported rule names is built as a derived GroupTag, named in lower case (Palo Alto `EDA-RED` is `eda-red`), once the Firewall has Policy Generation Enabled. A GroupTag the operator already made with that name is used instead, and a group name that is not a valid tag name is shown as GROUPTAG_NAME_INVALID
+- Where a GroupTag attaches stays with the operator's AssociationPolicies. A derived GroupTag with no AssociationPolicy shows GROUPTAG_NOT_ASSOCIATED, and its rules are shown and not translated until it is associated
+- When two firewalls in a namespace have a group of the same name, the first by name derives the GroupTag and the other uses it
+- Overlapping membership is checked only between groups whose tags are associated
+- The report shows each group's tag source (operator, derived, or another firewall) and the number of derived GroupTags on its status
+- `examples/07-microseg-tags.yaml` now holds only the AssociationPolicies
+
 ## v1.7.1
 
 - A slow commit is no longer taken for a refusal. The collector marks a report Rejected only when two polls after the 30 second commit wait still do not see the committed status. Live on v1.7.0, the first write after the app install was marked Rejected because the state engine was still loading the new intents; the 15 minute retry then built the policy
