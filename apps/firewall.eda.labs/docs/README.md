@@ -237,39 +237,38 @@ does not include the request URL, which carries the password or API key
 
 ## PAN policy discovery
 
-`examples/07-policy-source.yaml` (`palo-alto-vsys1`) is applied in
-`clab-pan-d3l`. It maps vsys1 to virtual network `pan-inside`, service
-target `pan-inside-vrf`, and binds the PAN DAGs `EDA-RED`, `EDA-BLUE`,
-`EDA-GREEN`, and `EDA-SECURE` (tags `eda-colour-*`) to GroupTags `red`,
-`blue`, `green`, and `secure`. The Palo Alto fixtures are
-`scripts/fw-pan-policy-fixtures.sh colour`: client1 `10.31.1.10` is RED,
-client2 `10.31.2.10` is BLUE, client3 `10.21.1.10` is GREEN, and
-`10.31.2.0/24` is SECURE. Three rules at the top carry `eda-export-to-gbp`:
-`EDA-RED-to-BLUE-ALLOW` (tcp-web), `EDA-RED-to-SECURE-ALLOW` (tcp-8443),
-and `EDA-RED-to-GREEN-DENY`. The seven earlier fixtures follow, then the
-lab allow-all, so traffic is unchanged.
+Every Firewall gets a Firewall Policy Report of the same name. Nothing is
+configured per policy: the firewall defines it, and EDA shows all of it.
+An address group in an exported rule maps to the existing GroupTag of the
+same name in lower case. The GroupTags and their AssociationPolicies are
+ordinary Microsegmentation App objects that the operator owns; in
+`clab-pan-d3l` they are `examples/07-microseg-tags.yaml` (`eda-red` on VLAN
+`pan-inside`, `eda-blue` on `pan-outside`, `eda-green` on `fg-inside`).
 
-From v1.5.0 the source can be in `mode: derive`. The groups name their
-VLANs, and `additionalVirtualNetworks` adds `pan-outside` and `fg-inside`.
-SECURE is unbound because it overlaps BLUE. In derive mode the collector
-translates the rules into Microsegmentation App objects, and the report's
-config intent builds them as derived, read-only resources. From v1.6.0 that
-also needs the Firewall's `spec.policyGeneration: Enabled`. This is the
-app's auto-generation switch, and it defaults to Disabled:
+The Palo Alto fixtures are `scripts/fw-pan-policy-fixtures.sh colour`:
+client1 `10.31.1.10` is RED, client2 `10.31.2.10` is BLUE, client3
+`10.21.1.10` is GREEN, and `10.31.2.0/24` is SECURE. Three rules at the top
+carry `eda-export-to-gbp`: `EDA-RED-to-BLUE-ALLOW` (tcp-web),
+`EDA-RED-to-SECURE-ALLOW` (tcp-8443), and `EDA-RED-to-GREEN-DENY`. The
+seven earlier fixtures follow, then the lab allow-all, so traffic is
+unchanged.
+
+The Firewall's `spec.policyGeneration` builds the translation as one
+MicroSegmentationPolicy, `fw-<firewall>`, next to any operator policies.
+It defaults to Disabled, which keeps the translation as a preview:
 
 ```bash
 kubectl -n clab-pan-d3l patch firewalls.firewall.eda.labs palo-alto --type merge -p '{"spec":{"policyGeneration":"Enabled"}}'
 ```
 
-Live result on 2026-11-01, PAN config revision 19: 11 rules, 9 exported, 2
-eligible. `EDA-RED-to-BLUE-ALLOW` becomes two Accept entries (TCP 80, 443)
-and `EDA-RED-to-GREEN-DENY` one Drop entry. Source `status.generation` is
-Disabled, because the Firewall is left Disabled. With Enabled it is Blocked,
-since the pan-d3l VRFs are `type: Simple` and microsegmentation needs
-EVPNVXLAN routers (ROUTER_NOT_EVPN). No microsegmentation object exists in
-the namespace. The model is vendor neutral: a FortiGate source reports its
-VDOM scope and section-label marker, and is UNAVAILABLE until the FortiGate
-reader ships. See [POLICY-GATES.md](POLICY-GATES.md).
+Live result on 2026-11-01, PAN config revision 19: 11 rules, 9 exported.
+EDA-RED, EDA-BLUE and EDA-GREEN resolve to their GroupTags; EDA-SECURE,
+`web-servers` and `dag-web` have no GroupTag and stay visible with
+NO_GROUPTAG. `EDA-RED-to-BLUE-ALLOW` becomes two Accept entries (TCP 80,
+443) and `EDA-RED-to-GREEN-DENY` one Drop entry in `fw-palo-alto`. The model
+is vendor neutral: a FortiGate report shows its VDOM scope and
+section-label marker, and is UNAVAILABLE until the FortiGate reader ships.
+See [POLICY-GATES.md](POLICY-GATES.md).
 
 ## What the UI shows
 
@@ -311,7 +310,7 @@ Queries page, or with `edactl -n clab-pan-d3l query` in `eda-toolbox`:
 .namespace.resources.cr.firewall_eda_labs.v1alpha1.firewallreport fields [ name, spec.lastChecked, spec.health ]
 .namespace.resources.cr.firewall_eda_labs.v1alpha1.firewallinventory fields [ spec.firewall, spec.type, spec.value ]
 .namespace.resources.cr.firewall_eda_labs.v1alpha1.firewallinterface fields [ name, status.configState, status.configDetail, status.commitJob, status.appliedAt ]
-.namespace.resources.cr.firewall_eda_labs.v1alpha1.firewallpolicysource fields [ name, status.sourceHealth, status.policyRevision, status.exported, status.ngfwRequired, status.unsupported ]
+.namespace.resources.cr.firewall_eda_labs.v1alpha1.firewallpolicyreport fields [ name, spec.sourceHealth, spec.generation, status.policy, status.entries, status.translated ]
 ```
 
 Add `where ( name = "fortigate-2" )` after the field list to pick one

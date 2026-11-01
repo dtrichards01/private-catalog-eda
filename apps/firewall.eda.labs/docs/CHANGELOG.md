@@ -1,5 +1,18 @@
 # Changelog
 
+## v1.7.1
+
+- A slow commit is no longer taken for a refusal. The collector marks a report Rejected only when two polls after the 30 second commit wait still do not see the committed status. Live on v1.7.0, the first write after the app install was marked Rejected because the state engine was still loading the new intents; the 15 minute retry then built the policy
+
+## v1.7.0
+
+- Policy is defined on the firewall, learnt in EDA, and translated onto the existing microsegmentation GroupTags. A firewall address group maps to the GroupTag of the same name in lower case (Palo Alto `EDA-RED` is `eda-red`), static or dynamic. A group with no such GroupTag is shown with NO_GROUPTAG and its rules are not translated
+- The Firewall app no longer creates GroupTags or AssociationPolicies. Where a GroupTag is attached is read from the operator's AssociationPolicies (VLANs, bridge interfaces, IRB interfaces), and every firewall member must sit in an IRB subnet of those attachments (MEMBER_OUTSIDE_TAG_TARGETS, GROUPTAG_NOT_ASSOCIATED). Selector, routed-interface and static-route associations cannot be checked and block the group (ASSOCIATION_SELECTOR_NOT_EXPANDED)
+- One MicroSegmentationPolicy per Firewall, `fw-<firewall>`, is the only derived resource, over the virtual networks where its GroupTags are attached. It coexists with operator policies
+- FirewallPolicySource is removed. There is one FirewallPolicyReport per Firewall, named after it, always written: discovery and translation always run, and Firewall `policyGeneration` is the only switch. New Firewall `spec.policyScope` names the vsys or VDOM (default `vsys1` or `root`). A report whose Firewall is deleted is deleted with its policy
+- The report state intent writes the committed generation, hash, policy name, entry count and translated rule count to the report's own status, and the report list shows them. The collector reads them to detect a refused transaction
+- Live, clab-pan-d3l: operator GroupTags `eda-red`, `eda-blue`, `eda-green` and their AssociationPolicies (`examples/07-microseg-tags.yaml`); `fw-palo-alto` translates eda-red to eda-blue TCP 80 and 443 Accept and eda-red to eda-green Drop. The old app-built red, blue and green objects were removed with the old report
+
 ## v1.6.2
 
 - Each derived MicroSegmentationPolicy entry sets `bidirectional` explicitly: true for Accept, so return traffic passes as on the stateful firewall; false for Drop, which the firewall applies one way only. v1.6.1 left it unset, and the Microsegmentation App defaulted every entry to true. That also dropped green to red, which the Palo Alto rule does not

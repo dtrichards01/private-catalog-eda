@@ -143,8 +143,7 @@ Six resources:
 | Firewall Interface | One NIC. Classic sets Attachment and BGP. Advanced Networking sets the spine port, BGP, families, and services. Configure Firewall on writes to the firewall; off is observe only. Status `configState` says whether the firewall runs the spec (v1.4.0). |
 | Firewall Report | What the collector last read and wrote. The UI does not read this object directly. |
 | Firewall Inventory | One row per firewall port or tenant, written by the collector. The Firewall Interface name and Tenant dropdowns read it. |
-| Firewall Policy Source | Which Palo Alto vsys to read policy from, the EDA virtual network and service target it maps to, and the PAN address group, tag and EDA GroupTag bindings. Observe mode only (v1.4.0). |
-| Firewall Policy Report | The normalised PAN snapshot and the classification of every rule, written by the collector. Status only; a state intent copies the summary onto the source. |
+| Firewall Policy Report | One per Firewall, written by the collector: the committed policy snapshot, each address group mapped to the existing GroupTag of the same name in lower case, the classification of every rule tagged `eda-export-to-gbp`, and the translation. With the Firewall's Policy Generation Enabled its one derived resource is MicroSegmentationPolicy `fw-<firewall>` (v1.7.0). |
 
 Every kind needs a `status` object in its OpenAPI schema, even one the UI
 does not list. If one kind has none, EDA cannot generate the app OpenAPI
@@ -164,7 +163,8 @@ Six intents. The state scripts on Firewall and Firewall Interface do nothing, so
 | Firewall Interface config | Checks the interface. Classic emits nothing on the fabric. Advanced Networking emits the spine default interface, address family policy, default BGP group, and default BGP peer, and checks each service's expected VNI against its bridge domain. |
 | Firewall Interface state | No-op. Status comes from the report. |
 | Firewall Report state | Copies the collector report onto the Firewall and each Firewall Interface, including the config state. That is what the Firewalls page reads. |
-| Firewall Policy Report state | Copies the policy summary, groups, and rule verdicts onto the Firewall Policy Source. |
+| Firewall Policy Report config | Emits MicroSegmentationPolicy `fw-<firewall>` when the report says generation Enabled. Never GroupTags or AssociationPolicies. |
+| Firewall Policy Report state | Writes the committed generation, hash, policy name and counts to the report's own status. |
 
 ## Collector and the two APIs
 
@@ -181,7 +181,7 @@ Each poll, for each Firewall:
 7. Compare that running state with each interface spec and set its config state (below).
 8. Write a Firewall Report. The report state intent publishes that onto the UI.
 9. Sync the Firewall Inventory rows (ports and tenants) for the dropdowns.
-10. For each Firewall Policy Source, read the Palo Alto policy, classify it, and write the Firewall Policy Report when it changed.
+10. Read the firewall's security policy, map it onto the existing GroupTags, classify and translate it, and write the Firewall Policy Report when it changed.
 
 The Firewall `spec.vendor` selects the API. Tenant selects where the push goes. Empty tenant is Palo Alto `vsys1` or FortiGate `root`.
 
@@ -220,11 +220,11 @@ while an interface is Pending. `pendingSince` restarts on each new
 `metadata.generation`. A change that has not applied within 10 minutes says
 `(not applied within 10m)`. This is status only; no EDA alarm is raised.
 
-## PAN policy discovery (observe only)
+## Firewall policy to microsegmentation
 
-A Firewall Policy Source points the collector at one Palo Alto vsys and one
-EDA virtual network and service target, and binds each PAN dynamic address
-group and its tag to an EDA GroupTag. Each poll the collector reads,
+Policy is defined on the firewall, learnt in EDA, and translated onto the
+existing microsegmentation GroupTags. For each Firewall, in the vsys or VDOM
+of `spec.policyScope` (default `vsys1` or `root`), each poll the collector reads,
 read-only through the XML API: security rules, tags, addresses, address
 groups, services and service groups (vsys and shared), the DAG runtime
 membership, and registered IPs. It reads the config audit version before and
@@ -236,18 +236,18 @@ Each rule gets the test plan v0.18 section 18 dimensions: classification
 `UNSUPPORTED`), the candidate class, inspection requirement, translation
 state, path state, and bypass authorisation, with reasons. A rule is
 eligible only when it is enabled, carries the exact tag `eda-export-to-gbp`,
-uses controlled DAG identities that resolve uniquely into the mapped
-virtual network, and has a complete context. App-ID, User-ID, URL and
+uses one address group on each side whose GroupTag (the group name in lower
+case) exists and whose AssociationPolicies attach it where the firewall
+members are, and has a complete context. App-ID, User-ID, URL and
 security profiles make it `NGFW_REQUIRED`. Negation, schedules, unknown
-fields, `any`, and ambiguous precedence make it `UNSUPPORTED`. No
-compatibility profile ships yet, so a rule that would be fabric enforceable
-reports `UNSUPPORTED` with `COMPATIBILITY_UNVALIDATED` and its candidate
-class.
+fields, `any`, and ambiguous precedence make it `UNSUPPORTED`. The built-in
+profile `microseg-1to1/1` translates the rest one-for-one.
 
-Nothing is written to the fabric or the firewall. No GroupTag, association,
-or microsegmentation policy is created. The path from a discovered rule to
-an EDA microsegmentation policy, and what each step still needs, is in
-[POLICY-GATES.md](POLICY-GATES.md).
+Nothing is written to the firewall. GroupTags and AssociationPolicies are
+only read. With Policy Generation Enabled, the one written object is
+MicroSegmentationPolicy `fw-<firewall>`, a derived resource of the report.
+The path from a discovered rule to an EDA microsegmentation policy, and
+what each step still needs, is in [POLICY-GATES.md](POLICY-GATES.md).
 
 ## Limited feature set
 
