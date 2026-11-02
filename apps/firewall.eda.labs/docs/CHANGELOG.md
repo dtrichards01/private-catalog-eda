@@ -1,5 +1,9 @@
 # Changelog
 
+## v1.8.1
+
+- Firewall Policy Reports open in the UI again. The list had no Name column, so its query did not fetch the name, and View asked the API for `firewallpolicyreports/undefined` and showed an empty `{}`. The default columns now start with name and namespace
+
 ## v1.8.0
 
 - The firewall's address groups become GroupTags. Every address group an exported rule names is built as a derived GroupTag, named in lower case (Palo Alto `EDA-RED` is `eda-red`), once the Firewall has Policy Generation Enabled. A GroupTag the operator already made with that name is used instead, and a group name that is not a valid tag name is shown as GROUPTAG_NAME_INVALID

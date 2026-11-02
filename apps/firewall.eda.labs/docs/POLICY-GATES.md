@@ -6,12 +6,14 @@ microsegmentation policy, and the lab evidence for each checklist gate.
 Status values are the checklist's own. Only the gate owners can record PASS,
 so evidenced gates are marked "lab evidence" and stay OPEN on the checklist.
 
-## What runs today (v1.7.1)
+## What runs today (v1.8.0)
 
-Policy is defined on the firewall, learnt in EDA, translated onto the
-existing microsegmentation GroupTags, and built. The Microsegmentation app
-stays the owner of GroupTags and AssociationPolicies, and operators can keep
-writing their own MicroSegmentationPolicies next to the firewall's.
+Policy is defined on the firewall, learnt in EDA, and built in the
+Microsegmentation app as derived resources: the firewall's address groups
+become GroupTags and its rules one MicroSegmentationPolicy. Where a GroupTag
+attaches stays with the operator's AssociationPolicies, and operators can
+keep writing their own GroupTags and MicroSegmentationPolicies next to the
+firewall's.
 
 1. For every Firewall, the collector reads the committed rulebase through the
    vendor API (vsys or VDOM from `spec.policyScope`, default `vsys1` or
@@ -19,19 +21,24 @@ writing their own MicroSegmentationPolicies next to the firewall's.
    lands in the FirewallPolicyReport named after the Firewall, so whatever
    the firewall defines is visible in EDA.
 2. Each address group an exported rule names maps to the GroupTag of the
-   same name in lower case: Palo Alto `EDA-RED` is GroupTag `eda-red`. The
-   GroupTag must already exist. Where it is attached comes from the
+   same name in lower case: Palo Alto `EDA-RED` is GroupTag `eda-red`. If
+   the operator already has that GroupTag it is used; otherwise the report
+   derives it. A name that is not a valid tag name is shown with
+   GROUPTAG_NAME_INVALID. Where the GroupTag is attached comes from the
    operator's AssociationPolicies, and every firewall member must sit in an
    IRB subnet of those attachments, so the fabric tags the hosts the firewall
-   rule matches. A group with no GroupTag is shown with NO_GROUPTAG and its
-   rules are not translated.
+   rule matches. A GroupTag with no AssociationPolicy is shown with
+   GROUPTAG_NOT_ASSOCIATED and its rules are not translated until it is
+   associated.
 3. The rules the built-in profile `microseg-1to1/1` expresses one-for-one
    become the entries of one MicroSegmentationPolicy, `fw-<firewall>`, in
    rule order, over the virtual networks where its GroupTags are attached.
    The translation is always on the report (`spec.derived`).
 4. With the Firewall's Policy Generation Enabled, the report config intent
-   emits that one policy. It is a derived resource of the report: read-only
-   in the UI, re-asserted by EDA, and removed when generation goes off.
+   emits the derived GroupTags and that one policy. They are derived
+   resources of the report: read-only in the UI, re-asserted by EDA, and
+   removed when generation goes off. The GroupTags are built even before any
+   rule translates, so they can be associated.
 5. Every firewall commit changes the snapshot, and therefore the
    translation. The next report write replaces the policy.
 
@@ -51,12 +58,13 @@ There is one switch:
 | Blocked | A fabric prerequisite is missing, and nothing is attempted. Today the check is that every router of a targeted virtual network is EVPNVXLAN, because the Microsegmentation app writes group-based policy under the VRF's bgp-evpn instance (ROUTER_NOT_EVPN). |
 | Rejected | EDA refused the transaction: two polls after the 30 second commit wait still did not see it committed on the report's status (v1.7.1; one slow commit, as after an app install, is not a refusal). DERIVE_REJECTED gives the reason. The same translation is retried after 15 minutes; a changed one is tried on the next poll. |
 
-Live, 2026-11-01, clab-pan-d3l: the operator objects are GroupTags
-`eda-red`, `eda-blue` and `eda-green` (Global) with AssociationPolicies on
-VLANs `pan-inside`, `pan-outside` and `fg-inside`
-(`examples/07-microseg-tags.yaml`). Report `palo-alto` maps EDA-RED, EDA-BLUE
-and EDA-GREEN to them, shows EDA-SECURE, `web-servers` and `dag-web` with
-NO_GROUPTAG, and translates `fw-palo-alto` with 3 entries: eda-red to
+Live, 2026-11-01, clab-pan-d3l (v1.8.0): report `palo-alto` derives six
+GroupTags, `eda-red`, `eda-blue`, `eda-secure`, `eda-green`, `web-servers`
+and `dag-web`. The only operator objects are AssociationPolicies for
+`eda-red`, `eda-blue` and `eda-green` on VLANs `pan-inside`, `pan-outside`
+and `fg-inside` (`examples/07-microseg-tags.yaml`). Those three groups
+resolve; the other three show GROUPTAG_NOT_ASSOCIATED. The report translates
+`fw-palo-alto` with 3 entries: eda-red to
 eda-blue TCP 80 and 443 Accept (both directions), eda-red to eda-green Drop
 (one way), over `fg-inside`, `pan-inside` and `pan-outside`. Reports
 `fortigate` and `fortigate-2` show UNAVAILABLE with
@@ -98,7 +106,7 @@ identities EDA owns:
 |------|--------------|-------|-------|
 | 1. Discover | Read the vsys rules, objects, DAG membership, and revisions as one snapshot. | Firewall app collector | Built (v1.4.0) |
 | 2. Classify | Each rule gets classification, candidate, inspection requirement, translation state, path state, and bypass authorisation, with reasons. | Firewall app collector | Built (v1.4.0) |
-| 3. Identity | Each address group maps by name, lower case, to an existing GroupTag. Its targets come from the operator's AssociationPolicies, and every member must sit in an IRB subnet of them (MEMBER_OUTSIDE_TAG_TARGETS, TARGET_SHARED, GROUPTAG_NOT_ASSOCIATED). Selector, routed-interface and static-route associations cannot be checked and block the group. The Firewall app never creates a GroupTag or AssociationPolicy. | Microsegmentation app owns; Firewall app reads | Built (v1.7.0) |
+| 3. Identity | Each address group maps by name, lower case, to a GroupTag: the operator's if one exists, otherwise derived from the group. Its targets come from the operator's AssociationPolicies, and every member must sit in an IRB subnet of them (MEMBER_OUTSIDE_TAG_TARGETS, TARGET_SHARED, GROUPTAG_NOT_ASSOCIATED). Selector, routed-interface and static-route associations cannot be checked and block the group. The Firewall app never creates an AssociationPolicy. | Firewall app derives GroupTags; Microsegmentation app owns associations | Built (v1.8.0) |
 | 4. Compatibility | The built-in profile `microseg-1to1/1`: IPv4, TCP/UDP destination port or range plus source port, allow or deny, one group to one group. Everything else stays NGFW_REQUIRED or UNSUPPORTED. | Firewall app | Built (v1.5.0). Not yet bound to builds by evidence. |
 | 5. Translate | One ordered MicroSegmentationPolicy per Firewall, `fw-<firewall>`, in rule order, with a hash. NGFW_REQUIRED rules produce no GBP allow. | Firewall app | Built (v1.7.0) |
 | 6. Approve and build | Setting the Firewall's Policy Generation to Enabled is the approval, and changes then follow the firewall. The one policy is built as a derived resource by the Microsegmentation app. No direct SR Linux writer. | Firewall app, Microsegmentation app | Built (v1.7.0) |
@@ -109,7 +117,7 @@ For the lab colour rules, step 5 produces `fw-palo-alto`:
 | PAN rule | Entry |
 |----------|-------|
 | `EDA-RED-to-BLUE-ALLOW` (tcp-web: 80, 443) | sourceGroupTag `eda-red`, destinationGroupTag `eda-blue`, IPv4, TCP, destination port 80, Accept, bidirectional; the same for 443 |
-| `EDA-RED-to-SECURE-ALLOW` (tcp-8443) | None: there is no GroupTag `eda-secure` (NO_GROUPTAG) |
+| `EDA-RED-to-SECURE-ALLOW` (tcp-8443) | None: GroupTag `eda-secure` is derived but not associated (GROUPTAG_NOT_ASSOCIATED), and its member is a /24 (PREFIX_MEMBER_NOT_IN_V1) |
 | `EDA-RED-to-GREEN-DENY` (any) | `eda-red` to `eda-green`, IPv4, Drop, one way |
 
 Default deny stays owned by the Microsegmentation app (gate F).
@@ -142,7 +150,7 @@ source-health gates.
 | B | Pagination, timeouts, retry, back-off, circuit breaking | One read per section with the client timeout; retry is the next 30 s poll. No back-off or circuit breaker. | OPEN |
 | B | Snapshot records revision, scope, capture time, completeness | `snapshot` in the policy report. Shared objects read; no pagination in the XML config read. | Lab evidence |
 | C | Microsegmentation app northbound contract | Not supplied. The installed CRDs (`microsegmentation.eda.nokia.com/v1alpha1`) are known, but a CRD is not a versioned contract. | BLOCKED |
-| D | Identity resolves uniquely to one namespace, VNET, service target, endpoint | Group name to existing GroupTag; targets from the operator's AssociationPolicies; members checked against the targets' IRB subnets. Live: EDA-RED, EDA-BLUE, EDA-GREEN RESOLVED on `eda-red`, `eda-blue`, `eda-green`. | Lab evidence |
+| D | Identity resolves uniquely to one namespace, VNET, service target, endpoint | Group name to GroupTag, derived unless the operator has one; targets from the operator's AssociationPolicies; members checked against the targets' IRB subnets. Live: EDA-RED, EDA-BLUE, EDA-GREEN RESOLVED on `eda-red`, `eda-blue`, `eda-green`. | Lab evidence |
 | D | Cross-VNET, overlap, unmanaged, conflicting tags rejected | Unit tests for MEMBER_OUTSIDE_TAG_TARGETS, TARGET_SHARED, OVERLAPPING_MEMBERSHIP (tagged groups only), GROUPTAG_NOT_ASSOCIATED. Same IP in two VNETs not tested live. | OPEN |
 | D | Unowned objects never adopted | GroupTags and AssociationPolicies are only read. The one written object, `fw-<firewall>`, is a derived resource of the report. | Lab evidence |
 | E | Profile bound to builds; unknown never equivalent | No profile ships; every candidate is UNSUPPORTED with COMPATIBILITY_UNVALIDATED. | Lab evidence for "unknown never equivalent"; profile OPEN |

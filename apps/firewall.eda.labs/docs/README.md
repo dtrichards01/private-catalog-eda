@@ -239,11 +239,12 @@ does not include the request URL, which carries the password or API key
 
 Every Firewall gets a Firewall Policy Report of the same name. Nothing is
 configured per policy: the firewall defines it, and EDA shows all of it.
-An address group in an exported rule maps to the existing GroupTag of the
-same name in lower case. The GroupTags and their AssociationPolicies are
-ordinary Microsegmentation App objects that the operator owns; in
-`clab-pan-d3l` they are `examples/07-microseg-tags.yaml` (`eda-red` on VLAN
-`pan-inside`, `eda-blue` on `pan-outside`, `eda-green` on `fg-inside`).
+An address group in an exported rule becomes the GroupTag of the same name
+in lower case, derived by the report unless the operator already has one.
+Where each GroupTag attaches is an ordinary Microsegmentation App
+AssociationPolicy that the operator owns; in `clab-pan-d3l` they are
+`examples/07-microseg-tags.yaml` (`eda-red` on VLAN `pan-inside`, `eda-blue`
+on `pan-outside`, `eda-green` on `fg-inside`).
 
 The Palo Alto fixtures are `scripts/fw-pan-policy-fixtures.sh colour`:
 client1 `10.31.1.10` is RED, client2 `10.31.2.10` is BLUE, client3
@@ -262,9 +263,9 @@ kubectl -n clab-pan-d3l patch firewalls.firewall.eda.labs palo-alto --type merge
 ```
 
 Live result on 2026-11-01, PAN config revision 19: 11 rules, 9 exported.
-EDA-RED, EDA-BLUE and EDA-GREEN resolve to their GroupTags; EDA-SECURE,
-`web-servers` and `dag-web` have no GroupTag and stay visible with
-NO_GROUPTAG. `EDA-RED-to-BLUE-ALLOW` becomes two Accept entries (TCP 80,
+All six groups become derived GroupTags. EDA-RED, EDA-BLUE and EDA-GREEN
+resolve through their AssociationPolicies; EDA-SECURE, `web-servers` and
+`dag-web` are not associated and stay visible with GROUPTAG_NOT_ASSOCIATED. `EDA-RED-to-BLUE-ALLOW` becomes two Accept entries (TCP 80,
 443) and `EDA-RED-to-GREEN-DENY` one Drop entry in `fw-palo-alto`. The model
 is vendor neutral: a FortiGate report shows its VDOM scope and
 section-label marker, and is UNAVAILABLE until the FortiGate reader ships.
