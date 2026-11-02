@@ -1,5 +1,10 @@
 # Changelog
 
+## v1.8.2
+
+- Advanced Networking has a Default Router field. The spine default interface and BGP peer join that router; empty keeps the node name. A Fabric builds its default routers as `router-<node>`, so FortiGate 2 on a Fabric spine sets `router-srl-spine-1`
+- The lab moved to `clab-srl-leaf-spine-dcgw`. The examples are that namespace: Palo Alto between `vnet-1` and `vnet-5`, FortiGate 1 between `vnet-mh-l2-avtep` and `vnet-1`, FortiGate 2 on `srl-spine-1` and `srl-spine-2` `e1-11`
+
 ## v1.8.1
 
 - Firewall Policy Reports open in the UI again. The list had no Name column, so its query did not fetch the name, and View asked the API for `firewallpolicyreports/undefined` and showed an empty `{}`. The default columns now start with name and namespace

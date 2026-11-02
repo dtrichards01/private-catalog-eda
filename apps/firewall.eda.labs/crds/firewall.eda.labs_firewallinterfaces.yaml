@@ -103,6 +103,11 @@ spec:
                     - localAS
                     - peerAS
                     type: object
+                  defaultRouter:
+                    description: |-
+                      Default router on the spine that the underlay interface and BGP peer
+                      join. Empty uses the node name. A Fabric builds router-<node>.
+                    type: string
                   encapType:
                     default: "Null"
                     description: Null is untagged. dot1q puts the spine default interface
