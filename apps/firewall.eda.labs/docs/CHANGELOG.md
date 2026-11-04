@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased (next tag v1.8.6)
+
+- The report's Policy Revision field is titled Firewall Config Version. Title only; the field is still `snapshot.policyRevision`. Run `scripts/fw-policy-report-crd.py` before the build
+
+## v1.8.5
+
+- New Firewall `spec.policyReport`, Policy Report, Enabled or Disabled (default Disabled). Only a Firewall with it Enabled gets a Firewall Policy Report; Disabled deletes the report and the policy it built. Policy Generation needs it Enabled. A FortiGate no longer gets an UNAVAILABLE report nobody asked for
+- Firewall Policy Reports are exposed read-only in the EDA API (`api.expose: read`), so the UI has no Create, Edit or Delete. The collector still writes them through Kubernetes. They are not EDA derived resources: a derived resource lives only in EDA and the collector could not write it
+- Install order: install the app, set Policy Report Enabled on each Firewall that should keep its report, then roll the collector. A v1.8.5 collector that sees the CRD default Disabled deletes the report and its policy
+- Live, 2026-11-04: palo-alto Enabled and its report kept the committed hash `e3d6ad44086918e6`; the fortigate and fortigate-2 reports were deleted
+
 ## v1.8.4
 
 - The Firewall Policy Report page reads as a report. The spec is read-only in the UI (the collector rewrites it on every change), and every field has a title and a description

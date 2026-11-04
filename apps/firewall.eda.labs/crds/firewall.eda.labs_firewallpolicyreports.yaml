@@ -385,8 +385,8 @@ spec:
                   objectRevision:
                     type: string
                     description: Firewall config version read after the objects. It
-                      differs from the policy revision when a commit landed during
-                      the read, and the snapshot is then incomplete.
+                      differs from the Firewall Config Version when a commit landed
+                      during the read, and the snapshot is then incomplete.
                   complete:
                     type: boolean
                     description: Every part of the read succeeded and both revisions

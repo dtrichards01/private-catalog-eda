@@ -267,6 +267,36 @@ spec:
                   this interface is deleted. Off: observe only. The collector reports
                   port and BGP state and writes nothing to the firewall.
                 type: boolean
+              defaultRoute:
+                description: |-
+                  Default route in this interface's virtual network towards the firewall.
+                  Inside classic interfaces only. Hidden while Advanced Networking is set.
+                properties:
+                  bfd:
+                    description: |-
+                      FabricStatic: BFD to the firewall, so the leaf removes the route when the firewall stops answering.
+                      The firewall must run BFD on this interface.
+                    type: boolean
+                  firewallNextHop:
+                    description: |-
+                      FirewallBGP: next hop of the static default route eda-default the app writes on the firewall, usually the
+                      outside fabric gateway. Empty writes no static route: the firewall's own static default is advertised.
+                    pattern: ^([0-9]{1,3}\.){3}[0-9]{1,3}$
+                    type: string
+                  mode:
+                    default: None
+                    description: |-
+                      None adds no default route.
+                      FabricStatic: EDA adds 0.0.0.0/0 in the virtual network's router on the attachment leaf, next hop this firewall address.
+                      FirewallBGP: the firewall advertises 0.0.0.0/0 to this interface's fabric BGP peer only. It needs Configure Firewall,
+                      BGP, and a firewall routing context without management: a Palo Alto virtual router, or a FortiGate VDOM that is not
+                      the management VDOM. Otherwise the interface shows Blocked and nothing is written.
+                    enum:
+                    - None
+                    - FabricStatic
+                    - FirewallBGP
+                    type: string
+                type: object
               enabled:
                 default: true
                 type: boolean
@@ -324,6 +354,15 @@ spec:
                 description: |-
                   Whether the firewall runs this spec, read back through the vendor API. Applied means the running
                   config has it; Verified also needs the interface Up. Pending and Committing say what is missing.
+                type: string
+              defaultRoute:
+                description: |-
+                  The Default Route outcome. Configured: the fabric static route is requested. Advertised: the firewall
+                  sends 0.0.0.0/0 to this peer. Pending: written, not yet seen. Warning: works, see the detail.
+                  Blocked: the firewall routing context shares management, nothing is written.
+                type: string
+              defaultRouteDetail:
+                description: Why, with the reason code first.
                 type: string
               message:
                 type: string

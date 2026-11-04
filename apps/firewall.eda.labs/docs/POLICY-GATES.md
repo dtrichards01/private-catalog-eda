@@ -54,10 +54,11 @@ firewall's.
 5. Every firewall commit changes the snapshot, and therefore the
    translation. The next report write replaces the policy.
 
-There is one switch:
+There are two switches, both on the Firewall:
 
 | Switch | Where | Values | Effect when off |
 |--------|-------|--------|-----------------|
+| Policy Report (v1.8.5) | Firewall `spec.policyReport` | Enabled, Disabled (default) | No report: the policy is not read, and an existing report is deleted with the policy it built. The report is read-only in the EDA API and UI, created only by the collector. |
 | Policy Generation | Firewall `spec.policyGeneration` | Enabled, Disabled (default) | The translation stays on the report as a preview, and the policy is removed. Reason POLICY_GENERATION_DISABLED. |
 
 `spec.generation` on the report says what was decided, and

@@ -307,12 +307,16 @@ unchanged. `fw-pan-policy-fixtures.sh align` (v1.8.3) adds static groups
 BLUE and RED to GREEN at them; RED to SECURE keeps `EDA-RED` and
 `EDA-SECURE` and is rejected.
 
-The Firewall's `spec.policyGeneration` builds the translation as one
-MicroSegmentationPolicy, `fw-<firewall>`, next to any operator policies.
-It defaults to Disabled, which keeps the translation as a preview:
+The Firewall's `spec.policyReport` (v1.8.5) asks for the report: only a
+Firewall with it Enabled gets a Firewall Policy Report, and Disabled
+deletes it. Reports are read-only in the EDA UI and API; the collector
+creates them. The Firewall's `spec.policyGeneration` then builds the
+translation as one MicroSegmentationPolicy, `fw-<firewall>`, next to any
+operator policies. Both default to Disabled; generation alone keeps the
+translation as a preview:
 
 ```bash
-kubectl -n clab-pan-d3l patch firewalls.firewall.eda.labs palo-alto --type merge -p '{"spec":{"policyGeneration":"Enabled"}}'
+kubectl -n clab-srl-leaf-spine-dcgw patch firewalls.firewall.eda.labs palo-alto --type merge -p '{"spec":{"policyReport":"Enabled","policyGeneration":"Enabled"}}'
 ```
 
 Live result on 2026-11-01, PAN config revision 19: 11 rules, 9 exported.
