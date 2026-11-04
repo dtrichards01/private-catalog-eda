@@ -285,8 +285,12 @@ does not include the request URL, which carries the password or API key
 
 Every Firewall gets a Firewall Policy Report of the same name. Nothing is
 configured per policy: the firewall defines it, and EDA shows all of it.
-An address group in an exported rule becomes the GroupTag of the same name
-in lower case, derived by the report unless the operator already has one.
+An address group in an exported rule becomes the GroupTag of exactly the
+same name, derived by the report unless the operator already has one. Name
+groups in lower case on the firewall: since v1.8.3 an upper-case name
+rejects every rule that uses it (GROUP_NAME_NOT_LOWERCASE). Each member must
+equal an IRB or routed-interface subnet whose attachments carry only that
+GroupTag; a `/32` is rejected (HOST_MEMBER_NOT_SUPPORTED).
 Where each GroupTag attaches is an ordinary Microsegmentation App
 AssociationPolicy that the operator owns; in `clab-pan-d3l` they are
 `examples/07-microseg-tags.yaml` (`eda-red` on VLAN `pan-inside`, `eda-blue`
@@ -298,7 +302,10 @@ client1 `10.31.1.10` is RED, client2 `10.31.2.10` is BLUE, client3
 carry `eda-export-to-gbp`: `EDA-RED-to-BLUE-ALLOW` (tcp-web),
 `EDA-RED-to-SECURE-ALLOW` (tcp-8443), and `EDA-RED-to-GREEN-DENY`. The
 seven earlier fixtures follow, then the lab allow-all, so traffic is
-unchanged.
+unchanged. `fw-pan-policy-fixtures.sh align` (v1.8.3) adds static groups
+`eda-red`, `eda-blue` and `eda-green` of the zone `/24`s and points RED to
+BLUE and RED to GREEN at them; RED to SECURE keeps `EDA-RED` and
+`EDA-SECURE` and is rejected.
 
 The Firewall's `spec.policyGeneration` builds the translation as one
 MicroSegmentationPolicy, `fw-<firewall>`, next to any operator policies.

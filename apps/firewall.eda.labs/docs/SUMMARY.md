@@ -156,7 +156,7 @@ Six resources:
 | Firewall Interface | One NIC. Classic sets Attachment and BGP. Advanced Networking sets the spine port, BGP, families, and services. Configure Firewall on writes to the firewall; off is observe only. Status `configState` says whether the firewall runs the spec (v1.4.0). |
 | Firewall Report | What the collector last read and wrote. The UI does not read this object directly. |
 | Firewall Inventory | One row per firewall port or tenant, written by the collector. The Firewall Interface name and Tenant dropdowns read it. |
-| Firewall Policy Report | One per Firewall, written by the collector: the committed policy snapshot, each address group mapped to the GroupTag of the same name in lower case, the classification of every rule tagged `eda-export-to-gbp`, and the translation. With the Firewall's Policy Generation Enabled it derives a GroupTag for each address group the operator has no GroupTag for, and MicroSegmentationPolicy `fw-<firewall>` (v1.8.0). AssociationPolicies stay with the operator. |
+| Firewall Policy Report | One per Firewall, written by the collector: the committed policy snapshot, each address group mapped to the GroupTag of exactly the same name (an upper-case name or a `/32` member rejects its rules, v1.8.3), the classification of every rule tagged `eda-export-to-gbp`, and the translation. With the Firewall's Policy Generation Enabled it derives a GroupTag for each address group the operator has no GroupTag for, and MicroSegmentationPolicy `fw-<firewall>` (v1.8.0). AssociationPolicies stay with the operator. |
 
 Every kind needs a `status` object in its OpenAPI schema, even one the UI
 does not list. If one kind has none, EDA cannot generate the app OpenAPI

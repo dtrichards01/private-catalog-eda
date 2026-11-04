@@ -1,5 +1,14 @@
 # Changelog
 
+## v1.8.3
+
+- Firewall rules must be built to what EDA can tag. Address group names are no longer lowercased: a group maps to the GroupTag of exactly its name, and a name with upper case (Palo Alto `EDA-RED`) is GROUP_NAME_NOT_LOWERCASE. The group derives no GroupTag, and every rule that uses it is rejected (UNSUPPORTED, no candidate)
+- A `/32` member, including a DAG registered IP, is rejected with HOST_MEMBER_NOT_SUPPORTED: the fabric tags attachments, not addresses. This replaces PREFIX_MEMBER_NOT_IN_V1, which flagged the opposite case
+- A member must equal an IRB or routed-interface subnet. A prefix that only overlaps one is SUBNET_NOT_ATTACHMENT. Every VLAN and bridge interface of the subnet's bridge domain, or its routed interface, must carry the group's GroupTag and no other, else SUBNET_SPLIT_ACROSS_TAGS
+- Routed interfaces count: their subnets are members, and an AssociationPolicy on `routedInterfaces` is a checked target instead of blocking the group
+- Evaluator `policy-eval/5`, so every report re-correlates
+- Lab: the Palo Alto has static groups `eda-red`, `eda-blue` and `eda-green` of the zone `/24`s, used by RED to BLUE and RED to GREEN (`fw-pan-policy-fixtures.sh align`). RED to SECURE keeps the upper-case groups and shows the rejection. The fabric result is unchanged: 3 entries
+
 ## v1.8.2
 
 - Advanced Networking has a Default Router field. The spine default interface and BGP peer join that router; empty keeps the node name. A Fabric builds its default routers as `router-<node>`, so FortiGate 2 on a Fabric spine sets `router-srl-spine-1`

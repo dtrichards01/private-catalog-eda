@@ -18,155 +18,435 @@ spec:
       openAPIV3Schema:
         type: object
         properties:
-          apiVersion: &id001
+          apiVersion:
             type: string
-          kind: *id001
+          kind:
+            type: string
           metadata:
             type: object
           spec:
             type: object
             properties:
-              firewall: *id001
-              vendor: *id001
-              managementMode: *id001
-              managementScope: *id001
-              scopeKind: *id001
-              exportTag: *id001
-              exportMarker: *id001
-              generation: *id001
-              generationRejectedAt: *id001
-              compatibilityProfile: *id001
-              sourceHealth: *id001
-              message: *id001
-              correlationId: *id001
-              capturedAt: *id001
-              lastSuccessfulRevision: *id001
-              virtualNetworks: &id003
+              firewall:
+                type: string
+                description: 'The Firewall this report belongs to. Set by the collector:
+                  one report per Firewall, of the same name.'
+              sourceHealth:
+                type: string
+                description: 'OK: a complete, consistent read. STALE_SOURCE: the read
+                  failed or a commit landed during it; the last good translation is
+                  kept. UNAVAILABLE: no policy reader for this vendor yet.'
+              generation:
+                type: string
+                description: 'The result of the Firewall''s Policy Generation switch,
+                  which is set on the Firewall. Enabled: the policy is built. Disabled:
+                  preview only. Blocked: a fabric prerequisite is missing. Rejected:
+                  EDA refused the transaction; retried after 15 minutes.'
+              message:
+                type: string
+                description: Why the read or the generation is not OK.
+              reasons:
                 type: array
-                items: *id001
-              snapshot:
-                type: object
-                properties:
-                  policyRevision: *id001
-                  objectRevision: *id001
-                  membershipObservationId: *id001
-                  sourceHash: *id001
-                  normalisedHash: *id001
-                  complete: &id002
-                    type: boolean
-                  rulesComplete: *id002
-                  referencedObjectsComplete: *id002
-                  effectiveOrderComplete: *id002
-                  membershipReadComplete: *id002
-                  problems: *id003
-              reasons: *id003
+                items:
+                  type: string
+                description: Report-wide reasons.
               summary:
                 type: object
                 properties:
-                  rules: &id004
+                  rules:
                     type: integer
-                  exported: *id004
-                  eligible: *id004
-                  fabricEnforceable: *id004
-                  fabricEnforceableDeny: *id004
-                  ngfwRequired: *id004
-                  unsupported: *id004
-              groups:
+                    description: Every rule in the vsys or VDOM, exported or not.
+                  exported:
+                    type: integer
+                    description: Rules carrying the export tag. Only these are evaluated
+                      and listed.
+                  eligible:
+                    type: integer
+                    description: Exported rules that passed every check.
+                  fabricEnforceable:
+                    type: integer
+                    description: Allow rules the fabric enforces.
+                  fabricEnforceableDeny:
+                    type: integer
+                    description: Deny rules the fabric enforces.
+                  ngfwRequired:
+                    type: integer
+                    description: Rules that need firewall inspection (App-ID, User-ID,
+                      URL, HIP, profiles).
+                  unsupported:
+                    type: integer
+                    description: Rules that cannot be translated. Each rule says why.
+                description: Rule counts.
+              virtualNetworks:
                 type: array
                 items:
-                  type: object
-                  properties:
-                    addressGroup: *id001
-                    groupTag: *id001
-                    tagSource: *id001
-                    dynamic: *id002
-                    filter: *id001
-                    state: *id001
-                    virtualNetworks: *id003
-                    members:
-                      type: array
-                      items:
-                        type: object
-                        properties:
-                          name: *id001
-                          type: *id001
-                          address: *id001
-                          virtualNetworks: *id003
-                          state: *id001
-                    reasons: *id003
+                  type: string
+                description: 'Where the policy is applied: the virtual networks where
+                  the operator''s AssociationPolicies attach the GroupTags the translation
+                  uses.'
               rules:
                 type: array
                 items:
                   type: object
                   properties:
-                    id: *id001
-                    name: *id001
-                    position: *id004
-                    enabled: *id002
-                    action: *id001
-                    from: *id003
-                    to: *id003
-                    source: *id003
-                    destination: *id003
-                    applications: *id003
-                    services: *id003
-                    eligible: *id002
-                    classification: *id001
-                    candidate: *id001
-                    inspectionRequirement: *id001
-                    translationState: *id001
-                    pathRequirement: *id002
-                    pathState: *id001
-                    bypassAuthorisation: *id001
-                    requires: *id003
-                    derivedEntries: *id004
-                    reasons: *id003
+                    position:
+                      type: integer
+                      description: Place in the rulebase.
+                    name:
+                      type: string
+                      description: Firewall rule name.
+                    classification:
+                      type: string
+                      description: FABRIC_ENFORCEABLE, FABRIC_ENFORCEABLE_DENY, NGFW_REQUIRED
+                        or UNSUPPORTED.
+                    translationState:
+                      type: string
+                      description: DISCOVERED (disabled rule), EVALUATED (checked,
+                        not translated), PROPOSED (passed every check), VALIDATED
+                        (translated into entries).
+                    derivedEntries:
+                      type: integer
+                      description: MicroSegmentationPolicy entries the rule produced.
+                    reasons:
+                      type: array
+                      items:
+                        type: string
+                      description: Why the rule is not translated.
+                    action:
+                      type: string
+                      description: allow, deny or drop (Palo Alto); accept or deny
+                        (FortiGate).
+                    source:
+                      type: array
+                      items:
+                        type: string
+                      description: Source objects.
+                    destination:
+                      type: array
+                      items:
+                        type: string
+                      description: Destination objects.
+                    services:
+                      type: array
+                      items:
+                        type: string
+                      description: Services resolved to protocol and ports.
+                    applications:
+                      type: array
+                      items:
+                        type: string
+                      description: App-IDs. Anything but any needs the firewall.
+                    from:
+                      type: array
+                      items:
+                        type: string
+                      description: Firewall source zones. Informational, not translated.
+                    to:
+                      type: array
+                      items:
+                        type: string
+                      description: Firewall destination zones. Informational, not
+                        translated.
+                    enabled:
+                      type: boolean
+                      description: The rule is enabled on the firewall.
+                    eligible:
+                      type: boolean
+                      description: The rule passed every check.
+                    candidate:
+                      type: string
+                      description: What the rule would be once identity or scope resolves.
+                        Empty when nothing on the EDA side can make it translate.
+                    inspectionRequirement:
+                      type: string
+                      description: 'FABRIC, NGFW or UNSUPPORTED: where the rule can
+                        be enforced.'
+                    requires:
+                      type: array
+                      items:
+                        type: string
+                      description: Capabilities the rule needs, checked against the
+                        compatibility profile.
+                    id:
+                      type: string
+                      description: Firewall rule UUID.
+                    pathRequirement:
+                      type: boolean
+                      description: 'Reserved: traffic must cross the firewall. Not
+                        managed yet.'
+                    pathState:
+                      type: string
+                      description: Reserved for firewall path steering. Always NOT_MANAGED.
+                    bypassAuthorisation:
+                      type: string
+                      description: Reserved for firewall bypass. Always NOT_AUTHORISED.
+                description: Every exported rule in rulebase order, with its classification
+                  and reasons.
+              groups:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    addressGroup:
+                      type: string
+                      description: The firewall address group.
+                    groupTag:
+                      type: string
+                      description: The GroupTag of exactly the same name.
+                    state:
+                      type: string
+                      description: 'RESOLVED: usable in rules. UNRESOLVED: see reasons.
+                        NO_GROUPTAG: the name cannot be a GroupTag (upper case or
+                        invalid), so its rules are rejected. EMPTY_MEMBERSHIP.'
+                    tagSource:
+                      type: string
+                      description: 'Who makes the GroupTag: derived (this report),
+                        operator (an existing GroupTag), or firewall:<name> (another
+                        firewall). Empty when there is none.'
+                    dynamic:
+                      type: boolean
+                      description: A dynamic group, whose members come from a tag
+                        filter.
+                    filter:
+                      type: string
+                      description: The dynamic group's tag filter.
+                    virtualNetworks:
+                      type: array
+                      items:
+                        type: string
+                      description: Where the operator's AssociationPolicies attach
+                        the GroupTag.
+                    members:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          name:
+                            type: string
+                            description: Address object or registered IP.
+                          type:
+                            type: string
+                            description: address-object or registered-ip.
+                          address:
+                            type: string
+                            description: The prefix the member resolves to.
+                          state:
+                            type: string
+                            description: 'IN_SCOPE: equals an IRB or routed subnet
+                              whose attachments carry only this GroupTag. HOST_NOT_SUPPORTED:
+                              a /32. NOT_AN_ATTACHMENT_SUBNET, SPLIT_ACROSS_TAGS,
+                              OUTSIDE_TAG_TARGETS, UNMANAGED, AMBIGUOUS_SCOPE, UNRESOLVED.'
+                          virtualNetworks:
+                            type: array
+                            items:
+                              type: string
+                            description: Virtual networks whose subnet the member
+                              equals.
+                      description: Each member and its check.
+                    reasons:
+                      type: array
+                      items:
+                        type: string
+                      description: Why the group does not resolve.
+                description: Every address group an exported rule names, mapped to
+                  its GroupTag.
               derived:
                 type: object
                 properties:
-                  profile: *id001
-                  hash: *id001
-                  blockers: *id003
-                  groupTags:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        name: *id001
-                        addressGroup: *id001
                   policy:
                     type: object
                     properties:
-                      name: *id001
-                      virtualNetworks: *id003
+                      name:
+                        type: string
+                        description: The one MicroSegmentationPolicy for this firewall,
+                          fw-<firewall>.
+                      virtualNetworks:
+                        type: array
+                        items:
+                          type: string
+                        description: Where the policy is applied.
                       entries:
                         type: array
                         items:
                           type: object
                           properties:
-                            rule: *id001
-                            ruleId: *id001
-                            description: *id001
-                            sourceGroupTag: *id001
-                            destinationGroupTag: *id001
-                            protocol: *id001
-                            destinationPortRange: *id001
-                            sourcePortRange: *id001
-                            forward: *id001
-                            destinationPortNumber: *id004
-                            sourcePortNumber: *id004
-                            bidirectional: *id002
+                            rule:
+                              type: string
+                              description: Firewall rule the entry comes from.
+                            sourceGroupTag:
+                              type: string
+                              description: Source GroupTag.
+                            destinationGroupTag:
+                              type: string
+                              description: Destination GroupTag.
+                            protocol:
+                              type: string
+                              description: TCP or UDP. Empty matches every IPv4 protocol.
+                            destinationPortNumber:
+                              type: integer
+                              description: Destination port.
+                            destinationPortRange:
+                              type: string
+                              description: Destination port range.
+                            sourcePortNumber:
+                              type: integer
+                              description: Source port.
+                            sourcePortRange:
+                              type: string
+                              description: Source port range.
+                            forward:
+                              type: string
+                              description: Accept or Drop.
+                            bidirectional:
+                              type: boolean
+                              description: Also matches return traffic. Set for Accept,
+                                as on a stateful firewall; never for Drop.
+                            description:
+                              type: string
+                              description: Entry description.
+                            ruleId:
+                              type: string
+                              description: Firewall rule UUID.
+                        description: Policy entries in rule order.
+                    description: The MicroSegmentationPolicy built when generation
+                      is Enabled.
+                  groupTags:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        name:
+                          type: string
+                          description: GroupTag name.
+                        addressGroup:
+                          type: string
+                          description: Firewall group it is made from.
+                    description: 'GroupTags this report builds: every lower-case group
+                      an exported rule names that has no operator GroupTag.'
+                  blockers:
+                    type: array
+                    items:
+                      type: string
+                    description: Fabric prerequisites that are missing. With any,
+                      generation is Blocked.
+                  hash:
+                    type: string
+                    description: Hash of this translation, computed by the collector.
+                      Status Derived Hash takes the same value once EDA committed
+                      it.
+                  profile:
+                    type: string
+                    description: Compatibility profile used.
+                description: 'The translation: the GroupTags and the MicroSegmentationPolicy.'
+              vendor:
+                type: string
+                description: From the Firewall.
+              managementMode:
+                type: string
+                description: The vendor API the collector reads, never a CLI. Follows
+                  the vendor.
+              managementScope:
+                type: string
+                description: The vsys (Palo Alto) or VDOM (FortiGate) read, from the
+                  Firewall's Policy Scope. Default vsys1 or root.
+              exportMarker:
+                type: string
+                description: 'How a rule opts in: rule-tag (Palo Alto) or section-label
+                  (FortiGate).'
+              exportTag:
+                type: string
+                description: The marker value. Rules without it are counted, not evaluated.
+              compatibilityProfile:
+                type: string
+                description: 'The rulebook for what translates one-for-one into a
+                  MicroSegmentationPolicy entry: IPv4, TCP or UDP ports, allow or
+                  deny, one group to one group. Versioned, so a report shows which
+                  rules it was judged by.'
+              lastSuccessfulRevision:
+                type: string
+                description: Firewall config version of the last complete read.
+              capturedAt:
+                type: string
+                description: When the collector read the firewall. A change to this
+                  alone writes nothing.
+              correlationId:
+                type: string
+                description: Hash of the evaluator version, firewall, revision, membership
+                  and content. Changes when any of them do.
+              generationRejectedAt:
+                type: string
+                description: When EDA last refused the policy.
+              snapshot:
+                type: object
+                properties:
+                  policyRevision:
+                    type: string
+                    description: Firewall config version read before the rules.
+                  objectRevision:
+                    type: string
+                    description: Firewall config version read after the objects. It
+                      differs from the policy revision when a commit landed during
+                      the read, and the snapshot is then incomplete.
+                  complete:
+                    type: boolean
+                    description: Every part of the read succeeded and both revisions
+                      match.
+                  rulesComplete:
+                    type: boolean
+                    description: The rulebase was read.
+                  referencedObjectsComplete:
+                    type: boolean
+                    description: Every address, group and service the rules name was
+                      read.
+                  effectiveOrderComplete:
+                    type: boolean
+                    description: The rule order was read.
+                  membershipReadComplete:
+                    type: boolean
+                    description: The runtime members of dynamic groups were read.
+                  membershipObservationId:
+                    type: string
+                    description: Hash of the dynamic group members. It changes when
+                      an IP is registered, even at the same config version.
+                  sourceHash:
+                    type: string
+                    description: Hash of the raw API responses, computed by the collector.
+                  normalisedHash:
+                    type: string
+                    description: Hash of the vendor-neutral model built from the read,
+                      computed by the collector.
+                  problems:
+                    type: array
+                    items:
+                      type: string
+                    description: Why the read is incomplete.
+                description: What was read, with revisions and hashes.
             required:
             - firewall
           status:
             type: object
             properties:
-              message: *id001
-              generation: *id001
-              derivedHash: *id001
-              policy: *id001
-              groupTags: *id004
-              entries: *id004
-              translated: *id004
+              generation:
+                type: string
+                description: What EDA committed.
+              policy:
+                type: string
+                description: The MicroSegmentationPolicy built.
+              groupTags:
+                type: integer
+                description: Derived GroupTags built.
+              entries:
+                type: integer
+                description: Policy entries built.
+              translated:
+                type: integer
+                description: Rules translated.
+              derivedHash:
+                type: string
+                description: The translation hash EDA committed. Equal to Derived
+                  Hash in the spec when the fabric holds this translation.
+              message:
+                type: string
+                description: Status message.
     subresources:
       status: {}
