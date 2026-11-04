@@ -3,7 +3,10 @@
 ## v1.8.2
 
 - Advanced Networking has a Default Router field. The spine default interface and BGP peer join that router; empty keeps the node name. A Fabric builds its default routers as `router-<node>`, so FortiGate 2 on a Fabric spine sets `router-srl-spine-1`
-- The lab moved to `clab-srl-leaf-spine-dcgw`. The examples are that namespace: Palo Alto between `vnet-1` and `vnet-5`, FortiGate 1 between `vnet-mh-l2-avtep` and `vnet-1`, FortiGate 2 on `srl-spine-1` and `srl-spine-2` `e1-11`
+- The lab moved to `clab-srl-leaf-spine-dcgw`, on firewall-only VNETs: Palo Alto between `fw-pan-inside` and `fw-pan-outside`, FortiGate 1 between `fw-fg-inside` and `fw-fg-outside`, one client per zone on `e1-31`, FortiGate 2 on `srl-spine-1` and `srl-spine-2` `e1-11`. The DCI and tenancy VNETs are untouched
+- The `pan-d3l` lab is destroyed and its namespace removed
+- Lab fix, no app change: the firewall VNETs in `dcgw-fw-vnets.yaml` now set EVI, VNI and route targets explicitly (3101 to 3212). Pool allocation had handed them the numbers the DCI VNETs set by hand (EVI 100 to 109, VNI 200 to 209), including the DCI stitch target `target:1:101`. Isolation was re-verified afterwards
+- Docs: the Microsegmentation default action is allow. There is no default-action setting, so traffic that matches no entry is forwarded (POLICY-GATES.md)
 
 ## v1.8.1
 

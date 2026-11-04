@@ -38,6 +38,52 @@ recorded. The physical port stays.
 
 ## Topology
 
+From v1.8.2 (2026-11-01) the firewalls sit in the containerlab
+`srl-leaf-spine-dcgw`, EDA namespace `clab-srl-leaf-spine-dcgw`, Fabric
+`pod-1` (overlay AS 65401, spines AS 101). The DCI and tenancy projects share
+that containerlab, but the firewall tests use their own VNETs and clients and
+touch none of theirs. The `pan-d3l` lab is destroyed and its namespace
+removed; the section after this one is kept as history.
+
+| Firewall | Port | Fabric port | VNET (router) | Addresses | BGP |
+|----------|------|-------------|---------------|-----------|-----|
+| Palo Alto inside | `ethernet1/1` | `srl-leaf-1` `e1-30` | `fw-pan-inside` (`fw-pan-inside-vrf`) | `10.31.11.2/30` | VRF AS 65011, PAN AS 65100 |
+| Palo Alto outside | `ethernet1/2` | `srl-leaf-4` `e1-30` | `fw-pan-outside` (`fw-pan-outside-vrf`) | `10.31.12.2/30` | VRF AS 65012 |
+| FortiGate 1 inside | `port2` | `srl-leaf-3` `e1-30` | `fw-fg-inside` (`fw-fg-inside-vrf`) | `10.21.11.2/30` | VRF AS 65021, FG AS 65201 |
+| FortiGate 1 outside | `port3` | `srl-leaf-2` `e1-30` | `fw-fg-outside` (`fw-fg-outside-vrf`) | `10.21.12.2/30` | VRF AS 65022 |
+| FortiGate 2 local | `port2` | `srl-spine-1` `e1-11` | default router `router-srl-spine-1` | `10.23.0.1/24` | spine AS 101, FG AS 65202, IPv4 + EVPN |
+| FortiGate 2 remote | `port3` | `srl-spine-2` `e1-11` | default router `router-srl-spine-2` | `10.24.0.1/24` | same |
+
+Each zone has one firewall-only client on the same leaf's `e1-31`, gateway
+`.1` on the zone IRB:
+
+| Client | Leaf | Address | Zone | GroupTag |
+|--------|------|---------|------|----------|
+| `fw-client-pan-inside` | `srl-leaf-1` | `10.31.1.10/24` | Palo Alto inside | EDA-RED |
+| `fw-client-pan-outside` | `srl-leaf-4` | `10.31.2.10/24` | Palo Alto outside | EDA-BLUE |
+| `fw-client-fg-inside` | `srl-leaf-3` | `10.21.1.10/24` | FortiGate 1 inside | EDA-GREEN |
+| `fw-client-fg-outside` | `srl-leaf-2` | `10.21.2.10/24` | FortiGate 1 outside | none |
+
+Inside and outside VRFs share no routes, so the firewall is the only path
+between them. The clients are plain containers (`--network none`, label
+`fw-test=client`) cabled with `containerlab tools veth`; they are not in the
+containerlab topology file, so a containerlab redeploy does not recreate
+them. Their only route is `10.0.0.0/8` via the zone gateway. FortiGate 2 has
+no client services. Its underlay sessions are up.
+
+The VNETs are in `dcgw-fw-vnets.yaml` and the Interfaces (`e1-30` firewall
+links, `e1-31` client ports, spine `e1-11`) and policy `fw-zone-export` in
+`dcgw-fw-links.yaml`, both at the repo root. On k0r4 the six host bridges
+stay. Each holds a veth into the dcgw node (`be1-30-leaf-1` in
+`br-pan-inside`, `be1-30-leaf-4` in `br-pan-outside`, `be1-30-leaf-3` in
+`br-fg-data`, `be1-30-leaf-2` in `br-fg-outside`, `be1-11-spine-1` in
+`br-fg2-inside`, `be1-11-spine-2` in `br-fg2-outside`). The FortiGate cables
+still cross to `.50` in VXLAN 10021 to 10024. A FirewallInterface with
+`advanced` set can name the spine's default router (`defaultRouter`,
+v1.8.2). A Fabric names it `router-<node>`.
+
+## Former topology: pan-d3l (retired 2026-11-01)
+
 EDA is Talos #2, `https://100.124.186.55/`, namespace `clab-pan-d3l`. The
 firewalls are KVM virtual machines, not containerlab nodes and not EDA
 TopoNodes. They run on two hosts:

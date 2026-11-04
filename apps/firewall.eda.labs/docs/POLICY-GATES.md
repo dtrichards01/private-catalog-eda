@@ -6,7 +6,7 @@ microsegmentation policy, and the lab evidence for each checklist gate.
 Status values are the checklist's own. Only the gate owners can record PASS,
 so evidenced gates are marked "lab evidence" and stay OPEN on the checklist.
 
-## What runs today (v1.8.0)
+## What runs today (v1.8.2)
 
 Policy is defined on the firewall, learnt in EDA, and built in the
 Microsegmentation app as derived resources: the firewall's address groups
@@ -70,6 +70,36 @@ eda-blue TCP 80 and 443 Accept (both directions), eda-red to eda-green Drop
 `fortigate` and `fortigate-2` show UNAVAILABLE with
 VENDOR_READER_NOT_IMPLEMENTED.
 
+Live, 2026-11-02, clab-srl-leaf-spine-dcgw (v1.8.2): the same result on
+firewall-only VNETs. EDA-RED is `fw-client-pan-inside` `10.31.1.10/32`,
+EDA-BLUE `fw-client-pan-outside` `10.31.2.10/32`, EDA-GREEN
+`fw-client-fg-inside` `10.21.1.10/32`. The associations are on VLANs
+`fw-pan-inside`, `fw-pan-outside` and `fw-fg-inside`. The report is at
+`entries 3, groupTags 6, translated 2`; red, blue and green resolve, the
+other three are GROUPTAG_NOT_ASSOCIATED. The GBP ACL is only in the firewall
+VNETs; the DCI bridge domains carry none.
+
+### Default action: unmatched traffic is allowed
+
+Neither the Microsegmentation app nor SR Linux has a default-action setting.
+`MicroSegmentationPolicy` has an action per entry only, and an entry without
+an action allows the traffic it matches. SR Linux
+`network-instance group-based-policy acl` has only `entry N action
+accept|drop`. The leaves carry only the derived entries, with no catch-all,
+so traffic that matches no entry is forwarded. Checked live in dcgw on 2026-11-01, while the associations were still on the DCI VNETs (they have since moved to the firewall VNETs):
+
+| Flow | Matches an entry? | Result |
+|------|-------------------|--------|
+| client-1 to client-2, both RED, across VXLAN; leaf-2 learned client-1's MAC with tag 1 | no | ICMP 0% loss, TCP 22 refused by the host (delivered) |
+| RED to BLUE ICMP through the Palo Alto | no (only TCP 80/443) | 0% loss |
+| RED to GREEN through FortiGate 1 | entry 25 drop, but the tag does not survive the firewall hop | 0% loss, so FortiGate 1 policy decides |
+
+So the derived policy is not an allow-list. It restricts only where it has
+an explicit drop entry. A firewall's final deny rule (or allow-all) is not
+exported, so it never becomes a fabric default. A default-deny fabric would
+need an explicit drop entry at the end of the policy for the groups
+concerned. The profile does not translate one today.
+
 ## Vendor commonality
 
 Everything after normalisation (identity checks, classification, the
@@ -100,7 +130,11 @@ protocol, and ports, and accepts or drops. Its `serviceTargets` are virtual
 networks, routers, or bridge domains.
 
 So a PAN rule translates only when its source and destination are
-identities EDA owns:
+identities EDA owns. Nothing in EDA or SR Linux tags a single IP or MAC.
+A `/32` member is accepted when it lies inside a tagged attachment's
+subnet, but the fabric then tags every host on that attachment. Keep one
+security group per attachment. The element-by-element mapping and the gaps
+are in `eda-microsegmentation-demo/docs/FIREWALL-RULES-TO-EDA-GBP.md`.
 
 | Step | What happens | Owner | State |
 |------|--------------|-------|-------|

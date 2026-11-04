@@ -87,6 +87,19 @@ only the other FortiGate link subnet, so VXLAN to `10.23.0.1` arrives on
 
 ## Topology
 
+From v1.8.2 the lab is `clab-srl-leaf-spine-dcgw` (Fabric `pod-1`), shared
+with the DCI and tenancy projects but on firewall-only VNETs. The Palo Alto
+joins `fw-pan-inside` on `srl-leaf-1` `e1-30` to `fw-pan-outside` on
+`srl-leaf-4` `e1-30`. FortiGate 1 joins `fw-fg-inside` on `srl-leaf-3`
+`e1-30` to `fw-fg-outside` on `srl-leaf-2` `e1-30`. Each link is a /30 with
+eBGP, and each zone has one client on the leaf's `e1-31` (`10.31.1.10`,
+`10.31.2.10`, `10.21.1.10`, `10.21.2.10`). FortiGate 2 peers IPv4 and EVPN
+with `srl-spine-1` and `srl-spine-2` on `e1-11`, in the default routers
+`router-srl-spine-1/2`. The `pan-d3l` lab below is destroyed and is kept as
+history. The README has the full port map.
+
+### Former topology: pan-d3l (retired 2026-11-01)
+
 The firewalls are KVM virtual machines, not containerlab nodes:
 
 | Host | Runs |
