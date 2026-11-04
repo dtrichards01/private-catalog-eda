@@ -94,9 +94,18 @@ spec:
               policyGeneration:
                 default: Disabled
                 description: |-
-                  Enabled builds one MicroSegmentationPolicy, fw-<name>, from the rules tagged eda-export-to-gbp that map to existing GroupTags.
+                  Needs Policy Report Enabled. Enabled builds one MicroSegmentationPolicy, fw-<name>, from the rules tagged eda-export-to-gbp that map to existing GroupTags.
                   Disabled keeps the translation as a preview in the Firewall Policy Report and removes the policy.
                   GroupTags and Association Policies are never built: they stay with the Microsegmentation App.
+                enum:
+                - Enabled
+                - Disabled
+                type: string
+              policyReport:
+                default: Disabled
+                description: |-
+                  Enabled reads this firewall's security policy and keeps one Firewall Policy Report, named after the Firewall, up to date.
+                  Disabled deletes the report and the policy it built. Policy Generation needs this Enabled.
                 enum:
                 - Enabled
                 - Disabled

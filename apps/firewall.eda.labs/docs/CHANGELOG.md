@@ -1,5 +1,14 @@
 # Changelog
 
+## v1.8.4
+
+- The Firewall Policy Report page reads as a report. The spec is read-only in the UI (the collector rewrites it on every change), and every field has a title and a description
+- Source Health shows a green tick for OK, amber for STALE_SOURCE and grey for UNAVAILABLE, with the platform's NPP Synced icon (`CheckCircleLtr`). Generation shows Enabled, Disabled, Blocked and Rejected the same way, and group states, member IN_SCOPE, rule classification and VALIDATED rules get icons too
+- Fields are grouped: Overview (firewall, health, generation, message, summary, virtual networks), Policy (rules, groups, derived), Source (vendor, API, scope, export marker, profile, revision). Correlation ID, rejected-at and the snapshot hashes are under Advanced
+- Vendor, management mode, export marker, source health and generation list their values. The values stay out of the CRD, so an unexpected value never fails a write
+- `scopeKind` is removed: it only repeated what the vendor implies. Install order matters once: the v1.8.4 collector must rewrite the reports before the app is installed, or the Manifest transaction fails with `unknown fields in spec: [spec.scopeKind]`
+- Generation is switched on the Firewall (Policy Generation, Enabled or Disabled); the report shows the outcome
+
 ## v1.8.3
 
 - Firewall rules must be built to what EDA can tag. Address group names are no longer lowercased: a group maps to the GroupTag of exactly its name, and a name with upper case (Palo Alto `EDA-RED`) is GROUP_NAME_NOT_LOWERCASE. The group derives no GroupTag, and every rule that uses it is rejected (UNSUPPORTED, no candidate)
