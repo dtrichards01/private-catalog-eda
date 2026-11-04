@@ -8,7 +8,9 @@ Push Pull Provider in EDA 26.12.1. The collector in this prototype
 (`fwstatus`) is a lab stand-in for that interface.
 
 Operational detail and the same topology diagram are also in
-[README.md](README.md).
+[README.md](README.md). The step-by-step demo is in [DEMO.md](DEMO.md),
+and the WATCH steering runbook in
+[DEMO-WATCH-STEERING.md](DEMO-WATCH-STEERING.md).
 
 ## Use case 1 — General firewall
 
@@ -156,7 +158,7 @@ Six resources:
 | Firewall Interface | One NIC. Classic sets Attachment and BGP. Advanced Networking sets the spine port, BGP, families, and services. Configure Firewall on writes to the firewall; off is observe only. Status `configState` says whether the firewall runs the spec (v1.4.0). Default Route (v1.8.6) on an inside interface: FabricStatic, a fabric StaticRoute 0.0.0.0/0 to the firewall, or FirewallBGP, the firewall advertising 0.0.0.0/0 to that peer only. FirewallBGP is blocked when the routing context carries management, which is every lab FortiGate interface (root is the management VDOM). |
 | Firewall Report | What the collector last read and wrote. The UI does not read this object directly. |
 | Firewall Inventory | One row per firewall port or tenant, written by the collector. The Firewall Interface name and Tenant dropdowns read it. |
-| Firewall Policy Report | One per Firewall with Policy Report Enabled (v1.8.5), created and written only by the collector and read-only in the UI: the committed policy snapshot, each address group mapped to the GroupTag of exactly the same name (an upper-case name or a `/32` member rejects its rules, v1.8.3), the classification of every rule tagged `eda-export-to-gbp`, and the translation. With the Firewall's Policy Generation Enabled it derives a GroupTag for each address group the operator has no GroupTag for, and MicroSegmentationPolicy `fw-<firewall>` (v1.8.0). AssociationPolicies stay with the operator. |
+| Firewall Policy Report | One per Firewall with Policy Report Enabled (v1.8.5), created and written only by the collector and read-only in the UI: the committed policy snapshot, each address group mapped to the GroupTag of exactly the same name (an upper-case name or a `/32` member rejects its rules, v1.8.3), the classification of every rule tagged `eda-export-to-gbp`, and the translation. With the Firewall's Policy Generation Enabled it derives a GroupTag for each address group the operator has no GroupTag for, and MicroSegmentationPolicy `fw-<firewall>` (v1.8.0). AssociationPolicies stay with the operator. A rule tagged `eda-watch` adds Steering rows: whole IRB or routed subnet pairs on one router, sent through the firewall in both directions (v1.8.8). |
 
 Every kind needs a `status` object in its OpenAPI schema, even one the UI
 does not list. If one kind has none, EDA cannot generate the app OpenAPI
@@ -176,7 +178,7 @@ Six intents. The state scripts on Firewall and Firewall Interface do nothing, so
 | Firewall Interface config | Checks the interface. Classic emits nothing on the fabric, except the StaticRoute of a FabricStatic default route. Advanced Networking emits the spine default interface, address family policy, default BGP group, and default BGP peer, and checks each service's expected VNI against its bridge domain. |
 | Firewall Interface state | No-op. Status comes from the report. |
 | Firewall Report state | Copies the collector report onto the Firewall and each Firewall Interface, including the config state. That is what the Firewalls page reads. |
-| Firewall Policy Report config | Emits MicroSegmentationPolicy `fw-<firewall>` when the report says generation Enabled. Never GroupTags or AssociationPolicies. |
+| Firewall Policy Report config | Emits the derived GroupTags, MicroSegmentationPolicy `fw-<firewall>` and the steering Configlets `fw-steer-<firewall>-<node>` when the report says generation Enabled; Rejected keeps only the GroupTags. Never AssociationPolicies. |
 | Firewall Policy Report state | Writes the committed generation, hash, policy name and counts to the report's own status. |
 
 ## Collector and the two APIs

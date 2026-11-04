@@ -1,5 +1,15 @@
 # Changelog
 
+## v1.8.8
+
+- WATCH steering: an enabled Palo Alto rule tagged `eda-watch` sends the traffic between its source and destination subnets through the firewall, both directions. The trigger is the rule tag plus a commit; no DAG
+- The collector writes Derived, Steering on the Firewall Policy Report: one row per subnet pair, STEERED or REFUSED with reasons (ANY_SOURCE, NOT_A_FABRIC_SUBNET, SAME_SUBNET, DIFFERENT_ROUTERS, NO_FIREWALL_INTERFACE, FIREWALL_LINK, RULE_DISABLED). Summary and status count Steered. The steering is part of the derived hash, so the commit check covers it
+- With generation Enabled the report intent builds Configlet `fw-steer-<firewall>-<node>`: a static next-hop group to the firewall interface address and one PBR policy per workload subinterface (IRB or routed), bound with `apply-forwarding-policy`. Subinterface and network-instance names come from IRBInterfaceState and RoutedInterfaceState
+- Rejected now keeps the derived GroupTags. Before, a refused translation removed them, the operator's AssociationPolicies lost their GroupTags, and every later report transaction failed
+- Evaluator `policy-eval/6`
+- v1.8.7 was published and withdrawn. It read the subinterfaces from IRBInterface status, which a config intent cannot see, so the steered report was refused
+- No install order: the fields are new and optional
+
 ## v1.8.6
 
 - New FirewallInterface `spec.defaultRoute`, Default Route, for an inside interface with a classic attachment. Mode None (default), FabricStatic or FirewallBGP. Status shows Default Route and Default Route Detail

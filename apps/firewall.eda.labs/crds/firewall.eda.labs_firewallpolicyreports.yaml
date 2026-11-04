@@ -78,8 +78,9 @@ spec:
                     description: Rules that cannot be translated. Each rule says why.
                   steered:
                     type: integer
-                    description: Subnet pairs of rules tagged eda-watch that can be
-                      sent through the firewall.
+                    description: 'Pairs of rules tagged eda-watch that can be sent
+                      through the firewall: subnet pairs, and each watched IP with
+                      its destination.'
                 description: Rule counts.
               virtualNetworks:
                 type: array
@@ -338,13 +339,20 @@ spec:
                         state:
                           type: string
                           description: 'STEERED: both directions go through the firewall
-                            when generation is Enabled. REFUSED: see reasons.'
+                            when generation is Enabled. ARMED: the rule''s dynamic
+                            group has no members yet; tag an IP on the firewall to
+                            steer it. REFUSED: see reasons.'
                         source:
                           type: object
                           properties:
                             prefix:
                               type: string
-                              description: The whole IRB or routed subnet.
+                              description: The whole IRB or routed subnet, or a host
+                                or range inside one (a watched IP is a /32).
+                            subnet:
+                              type: string
+                              description: The IRB or routed subnet a host or range
+                                lies in. Empty when Prefix is the whole subnet.
                             virtualNetwork:
                               type: string
                               description: Virtual network of the subnet.
@@ -352,13 +360,18 @@ spec:
                               type: string
                               description: The IRB or routed interface that routes
                                 it, irbinterface/<name> or routedinterface/<name>.
-                          description: Source subnet.
+                          description: Source subnet or host.
                         destination:
                           type: object
                           properties:
                             prefix:
                               type: string
-                              description: The whole IRB or routed subnet.
+                              description: The whole IRB or routed subnet, or a host
+                                or range inside one (a watched IP is a /32).
+                            subnet:
+                              type: string
+                              description: The IRB or routed subnet a host or range
+                                lies in. Empty when Prefix is the whole subnet.
                             virtualNetwork:
                               type: string
                               description: Virtual network of the subnet.
@@ -366,10 +379,10 @@ spec:
                               type: string
                               description: The IRB or routed interface that routes
                                 it, irbinterface/<name> or routedinterface/<name>.
-                          description: Destination subnet.
+                          description: Destination subnet or host.
                         router:
                           type: string
-                          description: The router (VRF) both subnets are on.
+                          description: The router (VRF) both sides are on.
                         nextHop:
                           type: string
                           description: The firewall interface address on that router.
@@ -380,7 +393,17 @@ spec:
                           type: array
                           items:
                             type: string
-                          description: Why the pair is not steered.
+                          description: Why the pair is not steered, or why the rule
+                            is armed.
+                        warnings:
+                          type: array
+                          items:
+                            type: string
+                          description: 'Where the firewall would let steered traffic
+                            through that the fabric policy does not carry: WATCH_ALLOW_NOT_IN_FABRIC
+                            (an allow rule that is not exported), WATCH_FALLTHROUGH_ALLOW
+                            (the first rule matching all of the pair allows it), WATCH_NO_DENY
+                            (nothing denies the rest).'
                         ruleId:
                           type: string
                           description: Firewall rule UUID.
@@ -508,7 +531,7 @@ spec:
                 description: Rules translated.
               steered:
                 type: integer
-                description: Subnet pairs EDA sends through the firewall.
+                description: Pairs EDA sends through the firewall.
               derivedHash:
                 type: string
                 description: The translation hash EDA committed. Equal to Derived

@@ -391,7 +391,9 @@ already has EDA static routes, for example Default Route FabricStatic, is
 not supported. The production path is Push Pull Provider in EDA 26.12.
 
 Lab demo rule: `EDA-WATCH-RED-HOST2` (inside `eda-red` 10.31.1.0/24 to inside
-`eda-host2` 10.31.13.0/30, allow), placed above `lab-untagged`.
+`eda-host2` 10.31.13.0/30, allow), placed above `lab-untagged`. The demo
+steps are in [DEMO-WATCH-STEERING.md](DEMO-WATCH-STEERING.md), and the full
+demo in [DEMO.md](DEMO.md).
 
 ## What the UI shows
 
