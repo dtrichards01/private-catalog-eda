@@ -6,7 +6,7 @@ microsegmentation policy, and the lab evidence for each checklist gate.
 Status values are the checklist's own. Only the gate owners can record PASS,
 so evidenced gates are marked "lab evidence" and stay OPEN on the checklist.
 
-## What runs today (v1.8.8)
+## What runs today (v1.8.9)
 
 Policy is defined on the firewall, learnt in EDA, and built in the
 Microsegmentation app as derived resources: the firewall's address groups
@@ -179,7 +179,7 @@ routed subnet. The element-by-element mapping and the gaps are in
 | 5. Translate | One ordered MicroSegmentationPolicy per Firewall, `fw-<firewall>`, in rule order, with a hash. NGFW_REQUIRED rules produce no GBP allow. | Firewall app | Built (v1.7.0) |
 | 6. Approve and build | Setting the Firewall's Policy Generation to Enabled is the approval, and changes then follow the firewall. The one policy is built as a derived resource by the Microsegmentation app. No direct SR Linux writer. | Firewall app, Microsegmentation app | Built (v1.7.0) |
 | 7. Drift | Derived resources cannot be edited, and EDA re-asserts them on every transaction. Source absence never deletes: an unavailable read keeps the last good translation. | EDA | By construction |
-| 8. Steer | An enabled rule tagged `eda-watch` sends the traffic between its source and destination subnets through the firewall, both directions, as one derived Configlet per leaf (next-hop group plus policy-based routing). Whole IRB or routed subnets on one router only; anything else is REFUSED with a reason. See README, WATCH steering. | Firewall app | Built (v1.8.8), prototype |
+| 8. Steer | An enabled rule tagged `eda-watch` sends the traffic between its source and destination subnets through the firewall, both directions, as one derived Configlet per leaf (next-hop group plus policy-based routing). Subnets, hosts or ranges inside IRB or routed subnets on one router; a dynamic address group source steers each registered IP as a `/32` with no commit (v1.8.9), ARMED while it has no members. Anything else is REFUSED with a reason, and the collector warns when the firewall would not hold the steered traffic to the exported policy. See README, WATCH steering. | Firewall app | Built (v1.8.8, hybrid v1.8.9), prototype |
 
 For the lab colour rules, step 5 produces `fw-palo-alto`:
 
@@ -224,7 +224,7 @@ source-health gates.
 | D | Unowned objects never adopted | GroupTags and AssociationPolicies are only read. The one written object, `fw-<firewall>`, is a derived resource of the report. | Lab evidence |
 | E | Profile bound to builds; unknown never equivalent | No profile ships; every candidate is UNSUPPORTED with COMPATIBILITY_UNVALIDATED. | Lab evidence for "unknown never equivalent"; profile OPEN |
 | E | PAN-only semantics never produce a broad allow | App-ID, User-ID, URL, HIP, and profile rules are NGFW_REQUIRED; `any` is UNSUPPORTED. | Lab evidence |
-| F | Ordered policy set, NGFW_REQUIRED as PathRequirement only | Not built as a PathRequirement. A firewall path can be requested per rule with tag `eda-watch` (v1.8.8): live 2026-11-04, `EDA-WATCH-RED-HOST2` STEERED, traceroute RED to host2 through 10.31.11.2 both ways, PAN session on that rule with App-ID `web-browsing`; tag removed, path back to 2 hops. Whole subnets, same VRF, Configlet-based. | OPEN (lab evidence for steering) |
+| F | Ordered policy set, NGFW_REQUIRED as PathRequirement only | Not built as a PathRequirement. A firewall path can be requested per rule with tag `eda-watch` (v1.8.8): live 2026-11-04, `EDA-WATCH-RED-HOST2` STEERED, traceroute RED to host2 through 10.31.11.2 both ways, PAN session on that rule with App-ID `web-browsing`; tag removed, path back to 2 hops. Hybrid (v1.8.9), live 2026-11-04: 10.31.1.10 registered with `eda-security-watch` and no commit, STEERED as 10.31.1.10/32 to 10.31.13.0/30 in under a minute; its HTTP matched `EDA-RED-to-HOST2-WEB` on the PAN with App-ID `web-browsing`, its ping was denied by `EDA-WATCH-HOST2`, and 10.31.1.11 in the same subnet stayed direct. Setting the watch rule to allow raised `WATCH_FALLTHROUGH_ALLOW`. Same VRF, Configlet-based. | OPEN (lab evidence for steering) |
 | G | Observe works, automatic disabled | Changed by user decision: discovery and translation always run; building is behind Firewall `policyGeneration: Enabled`, off by default. Disabled and Blocked build nothing. | Lab evidence (requirement changed) |
 | G | Outage, partial, empty DAG, absence distinguished; absence never deletes | UNAVAILABLE keeps the last good result; STALE_SOURCE; EMPTY_MEMBERSHIP; nothing is deleted. | Lab evidence |
 | H | Independent status dimensions; bypass never authorised by apply | Separate fields per rule; `bypassAuthorisation` is always NOT_AUTHORISED; `pathState` NOT_MANAGED. | Lab evidence |

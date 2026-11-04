@@ -1,6 +1,6 @@
 # Firewall integration demo
 
-A step-by-step run of the Firewall app (`firewall.eda.labs` v1.8.8) on EDA #2,
+A step-by-step run of the Firewall app (`firewall.eda.labs` v1.8.9) on EDA #2,
 namespace `clab-srl-leaf-spine-dcgw`. It takes about 35 minutes. Each part
 builds on the one before:
 
@@ -8,8 +8,12 @@ builds on the one before:
 2. EDA configures the firewall side of the fabric and confirms it;
 3. firewall rules become fabric microsegmentation;
 4. EDA steers the default route through the firewall;
-5. a tag on a firewall rule sends a workload's traffic through the firewall
-   for inspection (the quarantine segment).
+5. a runtime tag on one workload IP sends its traffic through the firewall
+   for inspection (hybrid WATCH).
+
+Parts 4 and 6 follow the layered runbook
+[DEMO-HYBRID-WATCH.md](DEMO-HYBRID-WATCH.md), which builds the PAN rules from
+an empty rule base and resets the lab at the end.
 
 Everything runs from the EDA UI at https://100.124.186.55 under
 **Firewalls**, plus the Palo Alto web UI for parts 4 and 6.
@@ -24,11 +28,10 @@ This is a lab prototype. The product path is the Push Pull Provider in EDA
 | Firewalls page | palo-alto, fortigate, fortigate-2 Up, Health 100 |
 | Firewall Interfaces | every interface Config State Verified, Default Route empty |
 | Firewall `palo-alto` | Policy Report Enabled, Policy Generation Enabled |
-| Policy report `palo-alto` | Health OK, Steered 0 |
-| PAN rule `EDA-WATCH-RED-HOST2` | committed, without tag `eda-watch` |
+| Policy report `palo-alto` | Health OK, Exported 0, Steered 0 |
+| PAN rules | `lab-untagged` and `allow-all` only |
 
-`bash scripts/fw-watch-check.sh` checks the WATCH part read-only in about a
-minute: expect `steered 0` and a two-hop path from RED to host2.
+`bash scripts/fw-demo.sh baseline` puts the PAN and EDA in that state.
 
 Avoid FortiGate FabricStatic live. FortiGate 1's default exits through
 port1 management NAT, so it shows the `DEFAULT_EXITS_VIA_MANAGEMENT`
@@ -78,32 +81,29 @@ like any other EDA state.
 5. **Contrast:** `fortigate-2-local` and `fortigate-2-remote` use Advanced
    Networking, where the FortiGate is an EVPN VTEP peering with the spines.
 
-## 4. Firewall rules become fabric microsegmentation (8 min)
+## 4. Firewall rules become fabric microsegmentation (13 min)
 
-1. Open **Firewall Policy Reports**. There is no Create button: the collector
-   creates one report per Firewall.
-2. On Firewall `palo-alto`, show the two switches:
-   - **Policy Report** Enabled makes the collector read the policy.
-   - **Policy Generation** Enabled builds the EDA policy from it.
-3. Open report `palo-alto` and walk through:
-   - **Firewall Config Version** and the snapshot: only committed config is
-     read;
-   - the rules tagged `eda-export-to-gbp`, the only ones counted and
-     translated;
-   - the address group to GroupTag mapping (`eda-red`, `eda-blue`,
-     `eda-green`).
-4. Show the results:
-   - `EDA-RED-to-BLUE-ALLOW` becomes Accept entries for TCP 80 and 443.
-   - `EDA-RED-to-GREEN-DENY` becomes a Drop entry.
-   - `EDA-RED-to-SECURE-ALLOW` is **rejected** because its groups are upper
-     case. The fabric tags attachments, so firewall objects have to be built
-     to what EDA can tag.
-5. Open the derived MicroSegmentationPolicy **`fw-palo-alto`**. It is
-   read-only: EDA owns it on behalf of the report.
+Run steps 1 to 3 of [DEMO-HYBRID-WATCH.md](DEMO-HYBRID-WATCH.md):
+
+1. **PAN rules.** Groups `eda-red`, `eda-blue`, `eda-host2` and three rules
+   tagged `eda-export-to-gbp`: RED to BLUE web, RED to host2 web, RED to host2
+   SSH deny. The report shows the GroupTags derived but not yet associated.
+2. **AssociationPolicies.** The operator attaches each GroupTag to a VLAN or
+   routed interface. The read-only MicroSegmentationPolicy `fw-palo-alto`
+   gets five entries.
+3. **Data path.** SSH from RED to host2 goes from refused by host to dropped
+   at the leaf; web still works.
+
+Show the two switches on Firewall `palo-alto` first: **Policy Report**
+Enabled makes the collector read the policy, **Policy Generation** Enabled
+builds the EDA policy from it. Point out the Firewall Config Version: only
+committed config is read.
 
 **Message:** the rules are defined only on the firewall. EDA enforces the
-subset the fabric can enforce, and says why for the rest. Where each GroupTag
-attaches stays with the operator's AssociationPolicies.
+subset the fabric can enforce, and says why for the rest (for example
+`PRECEDENCE_AMBIGUOUS` for "allow web, deny everything", which GBP cannot
+express without rule order). Where each GroupTag attaches stays with the
+operator's AssociationPolicies.
 
 ## 5. Default route through the firewall (10 min)
 
@@ -139,103 +139,33 @@ Finish this cleanup before part 6. The WATCH steering writes static routing
 in `fw-pan-inside-vrf`, and a FabricStatic default in the same VRF is not
 supported alongside it.
 
-## 6. Quarantine for inspection: WATCH (8 min)
+## 6. Per-host inspection: hybrid WATCH (15 min)
 
-A security event puts a workload under watch. Its traffic must go through
+A security event puts one workload under watch. Its traffic must go through
 the firewall for inspection, even to neighbours in the same VRF that the
-fabric would normally route to directly. The trigger is a tag on a PAN
-security rule.
+fabric would normally route to directly.
+
+Run steps 4 to 8 of [DEMO-HYBRID-WATCH.md](DEMO-HYBRID-WATCH.md):
+
+1. **Arm.** On the PAN, dynamic group `eda-watched` (match
+   `'eda-security-watch'`) and rule `EDA-WATCH-HOST2`, tagged `eda-watch`,
+   deny. The report shows the row **ARMED**, `NO_MEMBERS`.
+2. **Watch.** Register 10.31.1.10 with tag `eda-security-watch` through the
+   User-ID API. No commit. In under a minute the row is **STEERED**,
+   10.31.1.10/32 to 10.31.13.0/30, and srl-leaf-1 has two forwarding policies.
+3. **Test.** 10.31.1.10's web traffic now crosses the PAN (rule
+   `EDA-RED-to-HOST2-WEB`, App-ID `web-browsing`) and its ping is denied by
+   `EDA-WATCH-HOST2`. 10.31.1.11, in the same subnet, still goes direct.
+4. **Guard (optional).** Set the watch rule to allow: the collector warns
+   `WATCH_FALLTHROUGH_ALLOW`.
+5. **Release.** Unregister the IP; the steering is removed in under a minute.
 
 What this shows is the **WATCH** step of the containment lifecycle: forced
-inspection, with no access taken away. Fabric containment (QUARANTINED and
-ISOLATED, dropping traffic at the leaf with a containment profile) is
-designed but not built. See "Close" below.
+inspection, with no access taken away beyond the policy. Fabric containment
+(QUARANTINED and ISOLATED) is designed but not built. See "Close" below.
 
-The lab pieces:
-
-| Item | Value |
-|------|-------|
-| PAN rule | `EDA-WATCH-RED-HOST2`: zone inside to inside, `eda-red` (10.31.1.0/24) to `eda-host2` (10.31.13.0/30), allow, log at session end |
-| RED client | `fw-client-pan-inside`, 10.31.1.10 |
-| host2 | 10.31.13.2, routed on srl-leaf-1 `ethernet-1/32`, same VRF, HTTP on port 80 |
-| PAN inside | 10.31.11.2 |
-
-1. **Show the direct path.** From the RED client:
-
-   ```bash
-   docker exec fw-client-pan-inside traceroute -n -q 1 -m 5 10.31.13.2
-   ```
-
-   Two hops: 10.31.1.1, then 10.31.13.2. The PAN never sees this traffic.
-
-2. **Show the report.** Report `palo-alto`: note the Firewall Config Version
-   and Steered 0.
-
-3. **Trigger on the PAN.** In the PAN web UI, open Policies, Security,
-   `EDA-WATCH-RED-HOST2`. On the General tab add tag `eda-watch`, click OK,
-   then Commit. The commit takes 1 to 2 minutes.
-
-4. **Watch EDA react.** Within about 30 seconds of the commit, the report
-   shows:
-   - the new Firewall Config Version;
-   - under Derived, Steering, a STEERED row: 10.31.1.0/24 to 10.31.13.0/30,
-     next hop 10.31.11.2;
-   - Steered 1.
-
-   EDA commits the steering straight away as derived Configlet
-   `fw-steer-palo-alto-srl-leaf-1`. No one touched EDA.
-
-5. **Show the leaf.** On srl-leaf-1:
-
-   ```bash
-   docker exec <srl-leaf-1 container> sr_cli -d "info from running network-instance fw-pan-inside-vrf policy-forwarding"
-   ```
-
-   Two policies: `fw-steer-irb0-7` on RED's IRB and
-   `fw-steer-ethernet-1-32-4097` on host2's port. Each sends the other subnet
-   to next-hop group `fw-steer-palo-alto`.
-
-6. **Show the new path.** Repeat the traceroute:
-
-   ```
-   10.31.1.1 -> 10.31.11.2 (PAN) -> 10.31.1.1 -> 10.31.13.2
-   ```
-
-   The return path from host2 also goes through the PAN, so it sees the whole
-   session. Ping and HTTP still work.
-
-7. **Show the inspection.** Generate traffic:
-
-   ```bash
-   docker exec fw-client-pan-inside curl -s http://10.31.13.2/
-   ```
-
-   In the PAN UI, Monitor, Traffic: 10.31.1.10 to 10.31.13.2:80, inside to
-   inside, rule `EDA-WATCH-RED-HOST2`, App-ID `web-browsing`.
-
-8. **Release.** Remove tag `eda-watch` from the rule and Commit. Within about
-   30 seconds of the commit, the Steering row is gone, Steered is 0, the
-   Configlet and both leaf policies are removed, and the traceroute is two
-   hops again.
-
-**What to say about the limits:**
-
-- **Whole subnets.** A rule redirects every host in its source and destination
-  subnets, not single hosts, because EDA tags and steers attachments, not
-  IPs.
-- **Routed only, same VRF.** Both subnets must be routed on the same router,
-  and the firewall must have an interface there. Bridged traffic inside one
-  subnet cannot be policy routed on SR Linux.
-- **Refusals are visible.** A rule that cannot be steered stays on the report
-  as REFUSED with its reason, for example ANY_SOURCE, SAME_SUBNET,
-  DIFFERENT_ROUTERS or NO_FIREWALL_INTERFACE. Nothing is half applied.
-- **Prototype mechanism.** The steering is a Configlet. The product path is
-  the Push Pull Provider in EDA 26.12.
-
-If the PAN UI is slow, `bash scripts/fw-watch-pan.sh on` and
-`bash scripts/fw-watch-pan.sh off` make the same tag change through the XML
-API, with the commit, in 1 to 3 minutes each. The detailed runbook is
-[DEMO-WATCH-STEERING.md](DEMO-WATCH-STEERING.md).
+The rule-tag variant from v1.8.8 (steer whole subnets by tagging a committed
+rule) still works; see [DEMO-WATCH-STEERING.md](DEMO-WATCH-STEERING.md).
 
 ## 7. Close (2 min)
 
@@ -260,9 +190,9 @@ Release would always need an explicit operator approval.
 | Item | State |
 |------|-------|
 | Firewall Interfaces | Default Route None on all |
-| PAN rule `EDA-WATCH-RED-HOST2` | committed without tag `eda-watch` |
-| Report `palo-alto` | Steered 0, no `fw-steer-*` Configlet |
+| PAN and EDA | `bash scripts/fw-demo.sh baseline`: PAN rules `lab-untagged` and `allow-all` only, no registered IPs, no demo AssociationPolicies |
+| Report `palo-alto` | Exported 0, Steered 0, no `fw-steer-*` Configlet |
 
-If a report transaction fails during WATCH, remove the tag and commit. A
+If a report transaction fails during WATCH, unregister the IP. A
 Rejected report keeps its GroupTags, so the AssociationPolicies keep working
 while it is retried.

@@ -8,6 +8,13 @@ no EDA change are needed: the firewall rule is the only input.
 Lab: EDA #2, namespace `clab-srl-leaf-spine-dcgw`, app `firewall.eda.labs`
 v1.8.8. How it works is in README, WATCH steering.
 
+`bash scripts/fw-demo.sh baseline` deletes `EDA-WATCH-RED-HOST2` and the
+fixture groups this runbook uses. The current demo, with per-host watch by
+runtime tag, is [DEMO-HYBRID-WATCH.md](DEMO-HYBRID-WATCH.md). To run this one
+after a baseline, run `bash scripts/fw-demo.sh rules` and
+`bash scripts/fw-demo.sh associate` (group `eda-red`), then
+`bash scripts/fw-watch-pan.sh stage` (the rule).
+
 ## Starting state
 
 | Item | Value |

@@ -1,5 +1,15 @@
 # Changelog
 
+## v1.8.9
+
+- Hybrid WATCH: a steering side may be a host or range inside a fabric subnet, not only the whole subnet. The row shows the containing Fabric Subnet. A dynamic address group side resolves to its runtime registered IPs, each a `/32`, so a User-ID register or unregister of the group's tag starts or stops the steering without a commit. Both directions are steered: the forward policy on the source gateway, the return on the destination's
+- New steering state ARMED, reason `NO_MEMBERS`: the rule's dynamic group has no members, nothing is steered. Refusal `NOT_A_FABRIC_SUBNET` is now `NOT_IN_FABRIC_SUBNET`
+- Steering rows carry Warnings when the firewall would not hold the steered traffic to the exported policy: `WATCH_FALLTHROUGH_ALLOW`, `WATCH_NO_DENY`, `WATCH_ALLOW_NOT_IN_FABRIC`. Zones are not checked; a warning does not stop the steering
+- Evaluator `policy-eval/7`
+- New demo driver `scripts/fw-demo.sh` (baseline, rules, associate, watch-rule, tag, untag, test, watch-allow, all) and AssociationPolicies example `examples/08-demo-associations.yaml`. Guide: [DEMO-HYBRID-WATCH.md](DEMO-HYBRID-WATCH.md)
+- No install order: the fields are new and optional
+- Live, 2026-11-04: from an empty PAN rule base, three exported rules and three AssociationPolicies gave five fabric entries (SSH to host2 went from refused by host to dropped at the leaf). With `EDA-WATCH-HOST2` (source DAG `eda-watched`) ARMED, registering 10.31.1.10 steered it alone as a `/32` in under a minute: HTTP inspected by the PAN on `EDA-RED-to-HOST2-WEB`, App-ID `web-browsing`, ping denied by the watch rule, 10.31.1.11 still direct. Unregistering removed the steering; baseline restored the empty rule base and the regression passed with 0 failures
+
 ## v1.8.8
 
 - WATCH steering: an enabled Palo Alto rule tagged `eda-watch` sends the traffic between its source and destination subnets through the firewall, both directions. The trigger is the rule tag plus a commit; no DAG

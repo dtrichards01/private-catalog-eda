@@ -356,7 +356,7 @@ moves to peer group `eda-default`. An export rule keeps 0.0.0.0/0 off
 group `eda`, so the outside VRF never learns it. Each commit restarts the
 Palo Alto BGP sessions for a few seconds.
 
-## WATCH steering (v1.8.8)
+## WATCH steering (v1.8.8, hybrid v1.8.9)
 
 Tag an enabled Palo Alto security rule `eda-watch` and commit. EDA then
 sends the traffic between the rule's source and destination subnets through
@@ -374,26 +374,53 @@ policy applies, and the leaf delivers it.
 
 A row is STEERED only when:
 
-- each side is a whole IRB or routed subnet, not a host or part of a subnet
-  (the whole subnet is redirected);
+- each side is a subnet, host or range inside an IRB or routed subnet (the
+  row shows that Fabric Subnet);
 - both subnets are on the same router (same-VRF hairpin only);
-- the two subnets differ (bridged traffic in one subnet cannot be policy
-  routed);
+- the two containing subnets differ (bridged traffic in one subnet cannot be
+  policy routed);
 - the firewall has an interface on that router, and neither subnet is the
   firewall's own link.
 
-Anything else is REFUSED with the reason. The subinterface names come from
+Anything else is REFUSED with the reason (`NOT_IN_FABRIC_SUBNET`,
+`SAME_SUBNET`, `DIFFERENT_ROUTERS`, `NO_FIREWALL_INTERFACE`,
+`FIREWALL_LINK`, `ANY_SOURCE` and others). The subinterface names come from
 the IRBInterfaceState and RoutedInterfaceState the Services App writes.
 
-Prototype limits: whole subnets only, routed services only, and the
-Configlet creates `static` and `policy-forwarding` in the VRF. A VRF that
-already has EDA static routes, for example Default Route FabricStatic, is
-not supported. The production path is Push Pull Provider in EDA 26.12.
+### Hybrid WATCH (v1.8.9)
 
-Lab demo rule: `EDA-WATCH-RED-HOST2` (inside `eda-red` 10.31.1.0/24 to inside
-`eda-host2` 10.31.13.0/30, allow), placed above `lab-untagged`. The demo
-steps are in [DEMO-WATCH-STEERING.md](DEMO-WATCH-STEERING.md), and the full
-demo in [DEMO.md](DEMO.md).
+The rule says where watched traffic goes; a runtime tag says who is watched.
+Make the rule's source a dynamic address group, for example `eda-watched`
+matching `'eda-security-watch'`. Each IP registered with that tag through
+the User-ID API (from a SOAR, a SIEM or a PAN Auto-Tag action) is steered
+alone as a `/32`, and its return traffic too. Registering or unregistering
+needs no commit: the collector reads `registered-ip` and `dag-runtime` on
+every poll, and a membership change is a new derived hash and transaction.
+A dynamic group with no members gives the row **ARMED**, `NO_MEMBERS`, and
+nothing is steered.
+
+The watched host is still classified by its GroupTag on the leaf, so the
+fabric policy applies before the redirect. On the firewall, the collector
+checks each STEERED pair and adds a warning when the PAN would not hold the
+traffic to the fabric policy:
+
+- `WATCH_FALLTHROUGH_ALLOW`: the first rule that covers all of the pair (any
+  application, any service) is an allow;
+- `WATCH_NO_DENY`: no rule covers all of the pair;
+- `WATCH_ALLOW_NOT_IN_FABRIC`: an allow before the covering deny overlaps
+  the pair but is not tagged `eda-export-to-gbp`.
+
+Zones are not part of the check. Warnings do not stop the steering.
+
+Prototype limits: routed services only, and the Configlet creates `static`
+and `policy-forwarding` in the VRF. A VRF that already has EDA static
+routes, for example Default Route FabricStatic, is not supported. The
+production path is Push Pull Provider in EDA 26.12.
+
+The layered demo, from an empty PAN rule base to the hybrid watch and back,
+is [DEMO-HYBRID-WATCH.md](DEMO-HYBRID-WATCH.md) (`scripts/fw-demo.sh`). The
+v1.8.8 rule-tag runbook is [DEMO-WATCH-STEERING.md](DEMO-WATCH-STEERING.md),
+and the full demo is [DEMO.md](DEMO.md).
 
 ## What the UI shows
 
