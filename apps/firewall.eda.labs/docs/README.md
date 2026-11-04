@@ -328,6 +328,34 @@ is vendor neutral: a FortiGate report shows its VDOM scope and
 section-label marker, and is UNAVAILABLE until the FortiGate reader ships.
 See [POLICY-GATES.md](POLICY-GATES.md).
 
+## Default route (v1.8.6)
+
+An inside FirewallInterface can send the zone's default route to the
+firewall. Set `spec.defaultRoute.mode`:
+
+| Mode | What is written | Status |
+|------|-----------------|--------|
+| None (default) | Nothing | — |
+| FabricStatic | StaticRoute `<interface>-default`: 0.0.0.0/0 in the VNET router, next hop the firewall, on the attachment leaf. Optional `bfd`. Nothing on the firewall | Configured, or Warning when a FortiGate default leaves through a management interface |
+| FirewallBGP | The firewall advertises 0.0.0.0/0 over the interface's BGP peer only. Optional `firewallNextHop` adds the firewall's own static default | Advertised, Pending or Blocked |
+
+FirewallBGP is allowed only from a routing context with no management in
+it. On the Palo Alto that is a virtual router with no interface whose
+management profile allows more than ping (MGT is out of band, so the lab
+qualifies). On a FortiGate it needs a data VDOM; the lab interfaces are in
+root, the management VDOM, so it is Blocked and the FortiGate is not
+touched. FabricStatic works on both.
+
+```bash
+kubectl -n clab-srl-leaf-spine-dcgw patch firewallinterfaces.firewall.eda.labs palo-alto-inside --type merge -p '{"spec":{"defaultRoute":{"mode":"FirewallBGP","firewallNextHop":"10.31.12.1"}}}'
+kubectl -n clab-srl-leaf-spine-dcgw patch firewallinterfaces.firewall.eda.labs palo-alto-inside --type merge -p '{"spec":{"defaultRoute":null}}'
+```
+
+On the Palo Alto every object is named `eda-default`, and the inside peer
+moves to peer group `eda-default`. An export rule keeps 0.0.0.0/0 off
+group `eda`, so the outside VRF never learns it. Each commit restarts the
+Palo Alto BGP sessions for a few seconds.
+
 ## What the UI shows
 
 The Firewalls page reads the state database, not `kubectl`. The collector
@@ -384,7 +412,7 @@ It runs as Deployment `eda-fwstatus` in `eda-system`. Installing the app
 does not start that Deployment. `spec.configureFirewall` on an interface
 pushes that NIC, including `spec.vlanID`, its eBGP neighbor, and any
 Advanced Networking services through the vendor API. Off is observe only.
-Fabric AS is the peer AS on the firewall. Firewall AS is the firewall local AS. The collector does not originate a default route. The Virtual Network field lists virtual networks that already exist in the namespace. It does not create one.
+Fabric AS is the peer AS on the firewall. Firewall AS is the firewall local AS. The collector originates a default route only for an interface with Default Route FirewallBGP (v1.8.6). The Virtual Network field lists virtual networks that already exist in the namespace. It does not create one.
 
 ## States
 

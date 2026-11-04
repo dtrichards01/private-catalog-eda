@@ -153,7 +153,7 @@ Six resources:
 | Resource | Role |
 |----------|------|
 | Firewall | One external firewall. Vendor is `paloalto` or `fortinet`. Management is the API URL and the credential Secret. Status has the state, health, a health reason naming each interface that is not up, and the tenants read from the firewall. A Firewall alone is monitoring only. |
-| Firewall Interface | One NIC. Classic sets Attachment and BGP. Advanced Networking sets the spine port, BGP, families, and services. Configure Firewall on writes to the firewall; off is observe only. Status `configState` says whether the firewall runs the spec (v1.4.0). |
+| Firewall Interface | One NIC. Classic sets Attachment and BGP. Advanced Networking sets the spine port, BGP, families, and services. Configure Firewall on writes to the firewall; off is observe only. Status `configState` says whether the firewall runs the spec (v1.4.0). Default Route (v1.8.6) on an inside interface: FabricStatic, a fabric StaticRoute 0.0.0.0/0 to the firewall, or FirewallBGP, the firewall advertising 0.0.0.0/0 to that peer only. FirewallBGP is blocked when the routing context carries management, which is every lab FortiGate interface (root is the management VDOM). |
 | Firewall Report | What the collector last read and wrote. The UI does not read this object directly. |
 | Firewall Inventory | One row per firewall port or tenant, written by the collector. The Firewall Interface name and Tenant dropdowns read it. |
 | Firewall Policy Report | One per Firewall with Policy Report Enabled (v1.8.5), created and written only by the collector and read-only in the UI: the committed policy snapshot, each address group mapped to the GroupTag of exactly the same name (an upper-case name or a `/32` member rejects its rules, v1.8.3), the classification of every rule tagged `eda-export-to-gbp`, and the translation. With the Firewall's Policy Generation Enabled it derives a GroupTag for each address group the operator has no GroupTag for, and MicroSegmentationPolicy `fw-<firewall>` (v1.8.0). AssociationPolicies stay with the operator. |
@@ -173,7 +173,7 @@ Six intents. The state scripts on Firewall and Firewall Interface do nothing, so
 |--------|------|
 | Firewall config | Checks the Firewall. It does not create a virtual network, router, or BGP peer. |
 | Firewall state | No-op. Status comes from the report. |
-| Firewall Interface config | Checks the interface. Classic emits nothing on the fabric. Advanced Networking emits the spine default interface, address family policy, default BGP group, and default BGP peer, and checks each service's expected VNI against its bridge domain. |
+| Firewall Interface config | Checks the interface. Classic emits nothing on the fabric, except the StaticRoute of a FabricStatic default route. Advanced Networking emits the spine default interface, address family policy, default BGP group, and default BGP peer, and checks each service's expected VNI against its bridge domain. |
 | Firewall Interface state | No-op. Status comes from the report. |
 | Firewall Report state | Copies the collector report onto the Firewall and each Firewall Interface, including the config state. That is what the Firewalls page reads. |
 | Firewall Policy Report config | Emits MicroSegmentationPolicy `fw-<firewall>` when the report says generation Enabled. Never GroupTags or AssociationPolicies. |

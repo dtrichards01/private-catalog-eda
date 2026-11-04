@@ -76,6 +76,10 @@ spec:
                   unsupported:
                     type: integer
                     description: Rules that cannot be translated. Each rule says why.
+                  steered:
+                    type: integer
+                    description: Subnet pairs of rules tagged eda-watch that can be
+                      sent through the firewall.
                 description: Rule counts.
               virtualNetworks:
                 type: array
@@ -323,6 +327,67 @@ spec:
                           description: Firewall group it is made from.
                     description: 'GroupTags this report builds: every lower-case group
                       an exported rule names that has no operator GroupTag.'
+                  steering:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        rule:
+                          type: string
+                          description: Firewall rule tagged eda-watch.
+                        state:
+                          type: string
+                          description: 'STEERED: both directions go through the firewall
+                            when generation is Enabled. REFUSED: see reasons.'
+                        source:
+                          type: object
+                          properties:
+                            prefix:
+                              type: string
+                              description: The whole IRB or routed subnet.
+                            virtualNetwork:
+                              type: string
+                              description: Virtual network of the subnet.
+                            gateway:
+                              type: string
+                              description: The IRB or routed interface that routes
+                                it, irbinterface/<name> or routedinterface/<name>.
+                          description: Source subnet.
+                        destination:
+                          type: object
+                          properties:
+                            prefix:
+                              type: string
+                              description: The whole IRB or routed subnet.
+                            virtualNetwork:
+                              type: string
+                              description: Virtual network of the subnet.
+                            gateway:
+                              type: string
+                              description: The IRB or routed interface that routes
+                                it, irbinterface/<name> or routedinterface/<name>.
+                          description: Destination subnet.
+                        router:
+                          type: string
+                          description: The router (VRF) both subnets are on.
+                        nextHop:
+                          type: string
+                          description: The firewall interface address on that router.
+                        hopNode:
+                          type: string
+                          description: Leaf the firewall interface is attached to.
+                        reasons:
+                          type: array
+                          items:
+                            type: string
+                          description: Why the pair is not steered.
+                        ruleId:
+                          type: string
+                          description: Firewall rule UUID.
+                    description: 'Policy-based routing through the firewall for rules
+                      tagged eda-watch: one row per source and destination subnet
+                      pair, both directions, whole subnets only, same router only.
+                      Built as one Configlet per leaf when generation is Enabled.'
                   blockers:
                     type: array
                     items:
@@ -441,6 +506,9 @@ spec:
               translated:
                 type: integer
                 description: Rules translated.
+              steered:
+                type: integer
+                description: Subnet pairs EDA sends through the firewall.
               derivedHash:
                 type: string
                 description: The translation hash EDA committed. Equal to Derived

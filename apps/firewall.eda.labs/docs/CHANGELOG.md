@@ -1,8 +1,16 @@
 # Changelog
 
-## Unreleased (next tag v1.8.6)
+## v1.8.6
 
-- The report's Policy Revision field is titled Firewall Config Version. Title only; the field is still `snapshot.policyRevision`. Run `scripts/fw-policy-report-crd.py` before the build
+- New FirewallInterface `spec.defaultRoute`, Default Route, for an inside interface with a classic attachment. Mode None (default), FabricStatic or FirewallBGP. Status shows Default Route and Default Route Detail
+- FabricStatic: the intent writes StaticRoute `<interface>-default`, 0.0.0.0/0 in the router of the VNET subnet that holds the firewall address, next hop the firewall, on the attachment leaf. BFD is optional. Nothing is written to the firewall. Status is Configured; the detail says NO_FIREWALL_DEFAULT when the firewall has no default of its own to forward on. On a FortiGate whose default leaves through an interface with management access it is Warning, DEFAULT_EXITS_VIA_MANAGEMENT
+- FirewallBGP: the firewall advertises 0.0.0.0/0 over the interface's BGP peering. It needs BGP and Configure Firewall. Firewall Next Hop (optional) adds the firewall's static default; it must not be in the interface's own subnet, which would point it back at the fabric
+- FirewallBGP is only allowed from a routing context that does not carry management. Palo Alto: the virtual router must have no interface whose management profile allows more than ping, else Blocked. vsys1 only; one default per firewall. FortiGate: Blocked. In the lab the interfaces sit in root, the management VDOM (MANAGEMENT_VDOM), and a data VDOM is not built (FORTIGATE_BGP_DEFAULT_NOT_BUILT). Nothing is written to the FortiGate
+- Palo Alto objects, all named `eda-default`: the static route, a redistribution profile, `allow-redist-default-route`, a redistribution rule, and peer group `eda-default` holding that interface's peer alone. Export rules `eda-default-deny` (0.0.0.0/0 exact, group `eda`) and `eda-default-allow` keep the default off every other peer. Status is Advertised once BGP rib-out sends 0.0.0.0/0 to the fabric peer. Mode None removes every object and moves the peer back to `eda`
+- Each Palo Alto commit restarts its BGP sessions (both peers re-establish in under a minute). While another commit runs the status shows Pending, `WRITE_FAILED: palo alto commit already queued`, and the next poll retries
+- The report's Policy Revision field is titled Firewall Config Version. Title only; the field is still `snapshot.policyRevision`
+- No install order: the field is optional and defaults to None
+- Live, 2026-11-04, palo-alto-inside: FabricStatic put 0.0.0.0/0 static via 10.31.11.2 in fw-pan-inside-vrf on srl-leaf-1. FirewallBGP (next hop 10.31.12.1) was Advertised to 10.31.11.1 only: srl-leaf-1 learned 0.0.0.0/0 by BGP, srl-leaf-4 had none and kept its routes, and inside-outside pings stayed at 0% loss. fortigate-inside FirewallBGP was Blocked, MANAGEMENT_VDOM. Both were set back to None and the Palo Alto returned to its earlier config
 
 ## v1.8.5
 
