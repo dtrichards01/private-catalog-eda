@@ -356,6 +356,43 @@ moves to peer group `eda-default`. An export rule keeps 0.0.0.0/0 off
 group `eda`, so the outside VRF never learns it. Each commit restarts the
 Palo Alto BGP sessions for a few seconds.
 
+## WATCH steering (v1.8.8)
+
+Tag an enabled Palo Alto security rule `eda-watch` and commit. EDA then
+sends the traffic between the rule's source and destination subnets through
+the firewall, in both directions. Remove the tag and commit to stop. A DAG
+is not needed: the trigger is the rule tag, and the collector reads only the
+committed config, so nothing happens until the commit.
+
+The collector writes one row per subnet pair to the Firewall Policy Report,
+under Derived, Steering. With Policy Generation Enabled, the report intent
+builds one Configlet per leaf, `fw-steer-<firewall>-<node>`. It holds a
+next-hop group `fw-steer-<firewall>` to the firewall interface in that VRF,
+and one policy-based routing policy per workload subinterface. The firewall
+routes the traffic back out the same interface (intrazone hairpin), where no
+policy applies, and the leaf delivers it.
+
+A row is STEERED only when:
+
+- each side is a whole IRB or routed subnet, not a host or part of a subnet
+  (the whole subnet is redirected);
+- both subnets are on the same router (same-VRF hairpin only);
+- the two subnets differ (bridged traffic in one subnet cannot be policy
+  routed);
+- the firewall has an interface on that router, and neither subnet is the
+  firewall's own link.
+
+Anything else is REFUSED with the reason. The subinterface names come from
+the IRBInterfaceState and RoutedInterfaceState the Services App writes.
+
+Prototype limits: whole subnets only, routed services only, and the
+Configlet creates `static` and `policy-forwarding` in the VRF. A VRF that
+already has EDA static routes, for example Default Route FabricStatic, is
+not supported. The production path is Push Pull Provider in EDA 26.12.
+
+Lab demo rule: `EDA-WATCH-RED-HOST2` (inside `eda-red` 10.31.1.0/24 to inside
+`eda-host2` 10.31.13.0/30, allow), placed above `lab-untagged`.
+
 ## What the UI shows
 
 The Firewalls page reads the state database, not `kubectl`. The collector
