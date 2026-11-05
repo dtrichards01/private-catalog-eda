@@ -88,7 +88,8 @@ spec:
                   type: string
                 description: 'Where the policy is applied: the virtual networks where
                   the operator''s AssociationPolicies attach the GroupTags the translation
-                  uses.'
+                  uses, and the virtual networks of the subnets of GroupTags not attached
+                  yet.'
               rules:
                 type: array
                 items:
@@ -200,9 +201,12 @@ spec:
                       description: The GroupTag of exactly the same name.
                     state:
                       type: string
-                      description: 'RESOLVED: usable in rules. UNRESOLVED: see reasons.
-                        NO_GROUPTAG: the name cannot be a GroupTag (upper case or
-                        invalid), so its rules are rejected. EMPTY_MEMBERSHIP.'
+                      description: 'RESOLVED: usable in rules. NOT_ATTACHED: usable
+                        in rules, but no AssociationPolicy attaches the GroupTag yet,
+                        so the policy matches nothing for it until the operator attaches
+                        it. UNRESOLVED: see reasons. NO_GROUPTAG: the name cannot
+                        be a GroupTag (upper case or invalid), so its rules are rejected.
+                        EMPTY_MEMBERSHIP.'
                     tagSource:
                       type: string
                       description: 'Who makes the GroupTag: derived (this report),
@@ -220,7 +224,8 @@ spec:
                       items:
                         type: string
                       description: Where the operator's AssociationPolicies attach
-                        the GroupTag.
+                        the GroupTag; for NOT_ATTACHED, the virtual networks of its
+                        subnets.
                     members:
                       type: array
                       items:

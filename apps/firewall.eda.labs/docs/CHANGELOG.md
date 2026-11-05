@@ -1,5 +1,22 @@
 # Changelog
 
+## v1.9.1
+
+- The MicroSegmentationPolicy derives as soon as the firewall rules are committed, before any AssociationPolicy exists. Before, a group without an AssociationPolicy was UNRESOLVED (`GROUPTAG_NOT_ASSOCIATED`) and its rules were held back, so only the GroupTags appeared. Attaching the GroupTags stays with the operator
+- New group state NOT_ATTACHED: the GroupTag is valid and every member equals one fabric subnet, but nothing attaches the tag yet. Its rules translate, and the policy is applied to the virtual networks of those subnets. It matches no traffic for that tag until the operator attaches it. Once attached, the target checks (`MEMBER_OUTSIDE_TAG_TARGETS`, `TARGET_SHARED`, `SUBNET_SPLIT_ACROSS_TAGS`) apply as before
+- Groups not attached yet take part in the overlap check (`OVERLAPPING_MEMBERSHIP`) when they could translate. A group that cannot, such as one holding a `/32`, does not
+- `scripts/pan-demo-rules.py` adds a fifth, bad rule `EDA-BLUE-to-RED1-SSH` to group `eda-red-1` (10.31.1.10/32). EDA rejects it: UNSUPPORTED, `IDENTITY_UNRESOLVED`, with the group showing `HOST_MEMBER_NOT_SUPPORTED`. The other four rules still translate. It is last so it cannot make an earlier rule `PRECEDENCE_AMBIGUOUS`
+- Evaluator `policy-eval/8`
+- No install order: no API change
+
+## v1.9.0
+
+- Fix: the Palo Alto collector no longer commits pending candidate changes it did not make. Before, a poll that changed nothing still sent a commit whenever the candidate config differed, so half-finished UI edits by the same account went live within 30 seconds. It now commits only its own changes, and retries a commit only after its own commit failed. Its own commits still carry any pending edits of the same account; give the Firewall Secret a dedicated API account
+- Demo layout: VNET `fw-pan-inside` has three subnets in one VRF on srl-leaf-1, RED 10.31.1.0/24, BLUE 10.31.3.0/24 (VLAN `fw-pan-blue`, EVI 3103) and GREEN 10.31.4.0/24 (VLAN `fw-pan-green`, EVI 3104). Hosts red-1, red-2, blue-1 and green-1 are the containerlab lab `fw-demo` (`fw-demo-hosts.clab.yml`, `scripts/fw-demo-hosts.sh`), with srl-leaf-1 as an external container. The earlier inside clients and host2 (routed interface on e1-32) are retired
+- Demo rules: RED to BLUE web allow, RED to BLUE SSH deny, BLUE to GREEN web allow, RED to GREEN deny (six fabric entries), and watch rule `EDA-WATCH-RED` from `eda-watched` to BLUE and GREEN. `fw-demo.sh test` also prints the PAN traffic log for red-1 and red-2
+- Correction: steered traffic reaches the firewall before the leaf's group-based Drop entries apply, so for a watched host the firewall enforces the policy, not the leaf. Earlier notes said the fabric policy applied first. The `WATCH_*` warnings are what keeps this safe
+- No install order: no API change
+
 ## v1.8.9
 
 - Hybrid WATCH: a steering side may be a host or range inside a fabric subnet, not only the whole subnet. The row shows the containing Fabric Subnet. A dynamic address group side resolves to its runtime registered IPs, each a `/32`, so a User-ID register or unregister of the group's tag starts or stops the steering without a commit. Both directions are steered: the forward policy on the source gateway, the return on the destination's
@@ -214,7 +231,7 @@
 
 ## v1.2.9
 
-- Summary in `firewall/docs/SUMMARY.md`: concept prototype, two use cases, and the production path (Push Pull Provider in EDA 26.12.1)
+- Summary in `firewall/docs/SUMMARY.md`: concept prototype, two use cases, and what a product would need (the Push Pull Provider first; development work for the FW Integration App is tracked for sometime in 2027)
 
 ## v1.2.8
 

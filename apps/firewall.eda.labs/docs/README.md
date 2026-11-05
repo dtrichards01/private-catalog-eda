@@ -1,6 +1,6 @@
 # Firewalls
 
-This lab app is a concept prototype, not a product. The summary, the two use cases, and the production path are in [SUMMARY.md](SUMMARY.md). For production, EDA talks to the firewall API through the Push Pull Provider in EDA 26.12.1.
+This lab app is a concept prototype, not a product. The summary, the two use cases, and what a product would need are in [SUMMARY.md](SUMMARY.md). A product needs the Push Pull Provider first, as the interface between EDA and the firewall API; development work for the FW Integration App is tracked for sometime in 2027.
 
 This file is the `pan-d3l` operational writeup, including the topology diagram.
 The resource intents and the collector's Palo Alto and FortiGate API path are in [SUMMARY.md](SUMMARY.md).
@@ -54,22 +54,29 @@ removed; the section after this one is kept as history.
 | FortiGate 2 local | `port2` | `srl-spine-1` `e1-11` | default router `router-srl-spine-1` | `10.23.0.1/24` | spine AS 101, FG AS 65202, IPv4 + EVPN |
 | FortiGate 2 remote | `port3` | `srl-spine-2` `e1-11` | default router `router-srl-spine-2` | `10.24.0.1/24` | same |
 
-Each zone has one firewall-only client on the same leaf's `e1-31`, gateway
-`.1` on the zone IRB:
+The Palo Alto inside VNET `fw-pan-inside` has three subnets in one VRF on
+`srl-leaf-1`, with the demo hosts of the containerlab lab `fw-demo`
+(`fw-demo-hosts.clab.yml`, managed with `bash scripts/fw-demo-hosts.sh
+deploy|status|destroy`). The other zones have one client each on the leaf's
+`e1-31`. Gateways are `.1` on the subnet's IRB:
 
-| Client | Leaf | Address | Zone | GroupTag |
-|--------|------|---------|------|----------|
-| `fw-client-pan-inside` | `srl-leaf-1` | `10.31.1.10/24` | Palo Alto inside | EDA-RED |
-| `fw-client-pan-outside` | `srl-leaf-4` | `10.31.2.10/24` | Palo Alto outside | EDA-BLUE |
-| `fw-client-fg-inside` | `srl-leaf-3` | `10.21.1.10/24` | FortiGate 1 inside | EDA-GREEN |
-| `fw-client-fg-outside` | `srl-leaf-2` | `10.21.2.10/24` | FortiGate 1 outside | none |
+| Client | Leaf port | Address | Zone |
+|--------|-----------|---------|------|
+| `fw-demo-red-1`, `fw-demo-red-2` | `srl-leaf-1` `e1-22`, `e1-23` | `10.31.1.10/24`, `10.31.1.11/24` | Palo Alto inside, RED (VLAN `fw-pan-inside`) |
+| `fw-demo-blue-1` | `srl-leaf-1` `e1-24` | `10.31.3.10/24` | Palo Alto inside, BLUE (VLAN `fw-pan-blue`) |
+| `fw-demo-green-1` | `srl-leaf-1` `e1-25` | `10.31.4.10/24` | Palo Alto inside, GREEN (VLAN `fw-pan-green`) |
+| `fw-client-pan-outside` | `srl-leaf-4` `e1-31` | `10.31.2.10/24` | Palo Alto outside |
+| `fw-client-fg-inside` | `srl-leaf-3` `e1-31` | `10.21.1.10/24` | FortiGate 1 inside |
+| `fw-client-fg-outside` | `srl-leaf-2` `e1-31` | `10.21.2.10/24` | FortiGate 1 outside |
 
 Inside and outside VRFs share no routes, so the firewall is the only path
-between them. The clients are plain containers (`--network none`, label
-`fw-test=client`) cabled with `containerlab tools veth`; they are not in the
-containerlab topology file, so a containerlab redeploy does not recreate
-them. Their only route is `10.0.0.0/8` via the zone gateway. FortiGate 2 has
-no client services. Its underlay sessions are up.
+between them. In the `fw-demo` lab, `srl-leaf-1` is an external container:
+deploying or destroying the lab only adds or removes the host cables. The
+other clients are plain containers (`--network none`, label
+`fw-test=client`) cabled with `containerlab tools veth`; a containerlab
+redeploy does not recreate them. Every client's only route is `10.0.0.0/8`
+via its gateway, and blue-1, green-1 and the outside client serve HTTP on
+port 80. FortiGate 2 has no client services. Its underlay sessions are up.
 
 The VNETs are in `dcgw-fw-vnets.yaml` and the Interfaces (`e1-30` firewall
 links, `e1-31` client ports, spine `e1-11`) and policy `fw-zone-export` in
@@ -216,8 +223,8 @@ for. The collector therefore reads the VNI, EVI, and route target from each
 bridge domain and writes the matching FortiGate config in the VDOM named by
 the service tenant: `system/evpn` with that EVI and route target,
 `system/vxlan` (`vxlan200`, `vxlan201`), and the gateway address on each
-VXLAN interface (`10.200.0.1/24`, `10.201.0.1/24`). With the Push Pull
-Provider, that write becomes the push.
+VXLAN interface (`10.200.0.1/24`, `10.201.0.1/24`). With a Push Pull
+Provider (not yet available), that write would become the push.
 
 In `examples/06-fortigate-2-underlay.yaml`, `fortigate-2-local` (`port2`
 to spine1) carries both services, and `fortigate-2-remote` (`port3` to
@@ -399,10 +406,12 @@ every poll, and a membership change is a new derived hash and transaction.
 A dynamic group with no members gives the row **ARMED**, `NO_MEMBERS`, and
 nothing is steered.
 
-The watched host is still classified by its GroupTag on the leaf, so the
-fabric policy applies before the redirect. On the firewall, the collector
-checks each STEERED pair and adds a warning when the PAN would not hold the
-traffic to the fabric policy:
+Steered packets reach the firewall before the leaf's group-based Drop
+entries apply, so for a watched host the firewall is the enforcement point:
+in the lab, SSH from a watched RED host to BLUE is denied by the PAN's
+exported deny rule, not by the leaf. The collector therefore checks each
+STEERED pair and adds a warning when the PAN would not hold the traffic to
+the fabric policy:
 
 - `WATCH_FALLTHROUGH_ALLOW`: the first rule that covers all of the pair (any
   application, any service) is an allow;
@@ -414,8 +423,9 @@ Zones are not part of the check. Warnings do not stop the steering.
 
 Prototype limits: routed services only, and the Configlet creates `static`
 and `policy-forwarding` in the VRF. A VRF that already has EDA static
-routes, for example Default Route FabricStatic, is not supported. The
-production path is Push Pull Provider in EDA 26.12.
+routes, for example Default Route FabricStatic, is not supported. A
+product needs the Push Pull Provider first; development work for the FW
+Integration App is tracked for sometime in 2027.
 
 The layered demo, from an empty PAN rule base to the hybrid watch and back,
 is [DEMO-HYBRID-WATCH.md](DEMO-HYBRID-WATCH.md) (`scripts/fw-demo.sh`). The

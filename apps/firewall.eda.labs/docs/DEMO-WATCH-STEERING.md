@@ -8,12 +8,13 @@ no EDA change are needed: the firewall rule is the only input.
 Lab: EDA #2, namespace `clab-srl-leaf-spine-dcgw`, app `firewall.eda.labs`
 v1.8.8. How it works is in README, WATCH steering.
 
-`bash scripts/fw-demo.sh baseline` deletes `EDA-WATCH-RED-HOST2` and the
-fixture groups this runbook uses. The current demo, with per-host watch by
-runtime tag, is [DEMO-HYBRID-WATCH.md](DEMO-HYBRID-WATCH.md). To run this one
-after a baseline, run `bash scripts/fw-demo.sh rules` and
-`bash scripts/fw-demo.sh associate` (group `eda-red`), then
-`bash scripts/fw-watch-pan.sh stage` (the rule).
+**Legacy runbook.** It is kept as the record of the v1.8.8 test. Its hosts
+are retired: `fw-client-pan-inside` and host2, with routed interface
+`fw-pan-inside-host2` on `e1-32`, no longer exist, so the commands below no
+longer run as written. The current demo, with RED, BLUE and GREEN hosts and
+per-host watch by runtime tag, is [DEMO-HYBRID-WATCH.md](DEMO-HYBRID-WATCH.md).
+The rule-tag trigger still works there: tag a committed rule from `eda-red`
+to `eda-blue` with `eda-watch`, and the whole RED subnet is steered to BLUE.
 
 ## Starting state
 
@@ -113,7 +114,8 @@ path: `10.31.1.1`, then `10.31.13.2`.
   DIFFERENT_ROUTERS or NO_FIREWALL_INTERFACE. Nothing is half applied.
 - **Prototype.** The Configlet writes `static` and `policy-forwarding` in the
   VRF, so a VRF that also uses Default Route FabricStatic is not supported.
-  The production path is the Push Pull Provider in EDA 26.12.
+  A product needs the Push Pull Provider first; development work for the FW
+  Integration App is tracked for sometime in 2027.
 
 ## If the PAN UI is slow
 

@@ -18,8 +18,9 @@ an empty rule base and resets the lab at the end.
 Everything runs from the EDA UI at https://100.124.186.55 under
 **Firewalls**, plus the Palo Alto web UI for parts 4 and 6.
 
-This is a lab prototype. The product path is the Push Pull Provider in EDA
-26.12.
+This is a lab prototype, not a product. A product needs the Push Pull
+Provider first; development work for the FW Integration App is tracked for
+sometime in 2027.
 
 ## Before you start
 
@@ -85,14 +86,15 @@ like any other EDA state.
 
 Run steps 1 to 3 of [DEMO-HYBRID-WATCH.md](DEMO-HYBRID-WATCH.md):
 
-1. **PAN rules.** Groups `eda-red`, `eda-blue`, `eda-host2` and three rules
-   tagged `eda-export-to-gbp`: RED to BLUE web, RED to host2 web, RED to host2
-   SSH deny. The report shows the GroupTags derived but not yet associated.
-2. **AssociationPolicies.** The operator attaches each GroupTag to a VLAN or
-   routed interface. The read-only MicroSegmentationPolicy `fw-palo-alto`
-   gets five entries.
-3. **Data path.** SSH from RED to host2 goes from refused by host to dropped
-   at the leaf; web still works.
+1. **PAN rules.** Groups `eda-red`, `eda-blue`, `eda-green` (one subnet each
+   of VNET `fw-pan-inside`) and four rules tagged `eda-export-to-gbp`: RED to
+   BLUE web allow, RED to BLUE SSH deny, BLUE to GREEN web allow, RED to GREEN
+   deny. The report shows the GroupTags derived but not yet associated.
+2. **AssociationPolicies.** The operator attaches each GroupTag to its VLAN.
+   The read-only MicroSegmentationPolicy `fw-palo-alto` gets six entries.
+3. **Data path.** From red-1 and red-2, web to blue-1 works, SSH to blue-1
+   goes from refused by host to dropped at the leaf, and everything to
+   green-1 is dropped. The PAN traffic log shows none of it.
 
 Show the two switches on Firewall `palo-alto` first: **Policy Report**
 Enabled makes the collector read the policy, **Policy Generation** Enabled
@@ -148,14 +150,18 @@ fabric would normally route to directly.
 Run steps 4 to 8 of [DEMO-HYBRID-WATCH.md](DEMO-HYBRID-WATCH.md):
 
 1. **Arm.** On the PAN, dynamic group `eda-watched` (match
-   `'eda-security-watch'`) and rule `EDA-WATCH-HOST2`, tagged `eda-watch`,
-   deny. The report shows the row **ARMED**, `NO_MEMBERS`.
-2. **Watch.** Register 10.31.1.10 with tag `eda-security-watch` through the
-   User-ID API. No commit. In under a minute the row is **STEERED**,
-   10.31.1.10/32 to 10.31.13.0/30, and srl-leaf-1 has two forwarding policies.
-3. **Test.** 10.31.1.10's web traffic now crosses the PAN (rule
-   `EDA-RED-to-HOST2-WEB`, App-ID `web-browsing`) and its ping is denied by
-   `EDA-WATCH-HOST2`. 10.31.1.11, in the same subnet, still goes direct.
+   `'eda-security-watch'`) and rule `EDA-WATCH-RED` (`eda-watched` to
+   `eda-blue` and `eda-green`), tagged `eda-watch`, deny. The report shows
+   the row **ARMED**, `NO_MEMBERS`.
+2. **Watch.** Register red-1, 10.31.1.10, with tag `eda-security-watch`
+   through the User-ID API. No commit. In under a minute two rows are
+   **STEERED**, 10.31.1.10/32 to BLUE and to GREEN, and srl-leaf-1 has three
+   forwarding policies.
+3. **Test.** All of red-1's traffic to BLUE and GREEN now crosses the PAN,
+   which enforces the same rules: web allowed by `EDA-RED-to-BLUE-WEB` with
+   App-ID `web-browsing`, SSH and GREEN denied by the exported deny rules,
+   and ping, which the fabric allowed, denied by `EDA-WATCH-RED`. red-2, in
+   the same subnet, still goes direct.
 4. **Guard (optional).** Set the watch rule to allow: the collector warns
    `WATCH_FALLTHROUGH_ALLOW`.
 5. **Release.** Unregister the IP; the steering is removed in under a minute.
@@ -165,7 +171,8 @@ inspection, with no access taken away beyond the policy. Fabric containment
 (QUARANTINED and ISOLATED) is designed but not built. See "Close" below.
 
 The rule-tag variant from v1.8.8 (steer whole subnets by tagging a committed
-rule) still works; see [DEMO-WATCH-STEERING.md](DEMO-WATCH-STEERING.md).
+rule) still works; [DEMO-WATCH-STEERING.md](DEMO-WATCH-STEERING.md) describes
+it, on hosts that are now retired.
 
 ## 7. Close (2 min)
 

@@ -3,9 +3,11 @@
 This is a concept prototype, not a product. The feature set is limited and
 covers two lab use cases on Talos EDA #2, namespace `clab-pan-d3l`.
 
-For production, the interface between EDA and the firewall API will be the
-Push Pull Provider in EDA 26.12.1. The collector in this prototype
-(`fwstatus`) is a lab stand-in for that interface.
+A product needs the Push Pull Provider first, as the interface between EDA
+and the firewall API; development work for the FW Integration App is
+tracked for sometime in 2027. The
+collector in this prototype (`fwstatus`) is a lab stand-in for that
+interface.
 
 Operational detail and the same topology diagram are also in
 [README.md](README.md). The step-by-step demo is in [DEMO.md](DEMO.md), the
@@ -51,7 +53,7 @@ a VDOM.
 The VNI is not learned by the firewall. A VTEP joins only the EVPN
 instances it is configured for, so something has to write the EVPN instance
 and VXLAN interface onto the FortiGate. In the prototype that is the
-collector. In production it is the Push Pull Provider.
+collector. In a product it would be the Push Pull Provider.
 
 A Firewall Interface with Advanced Networking has its own section: spine
 node and port, encapsulation and VLAN, BGP (Fabric AS, Firewall AS, address
@@ -95,8 +97,10 @@ with the DCI and tenancy projects but on firewall-only VNETs. The Palo Alto
 joins `fw-pan-inside` on `srl-leaf-1` `e1-30` to `fw-pan-outside` on
 `srl-leaf-4` `e1-30`. FortiGate 1 joins `fw-fg-inside` on `srl-leaf-3`
 `e1-30` to `fw-fg-outside` on `srl-leaf-2` `e1-30`. Each link is a /30 with
-eBGP, and each zone has one client on the leaf's `e1-31` (`10.31.1.10`,
-`10.31.2.10`, `10.21.1.10`, `10.21.2.10`). FortiGate 2 peers IPv4 and EVPN
+eBGP. The Palo Alto inside has three subnets with the `fw-demo` hosts on
+`srl-leaf-1` `e1-22` to `e1-25` (RED `10.31.1.10` and `.11`, BLUE
+`10.31.3.10`, GREEN `10.31.4.10`); each other zone has one client on the
+leaf's `e1-31` (`10.31.2.10`, `10.21.1.10`, `10.21.2.10`). FortiGate 2 peers IPv4 and EVPN
 with `srl-spine-1` and `srl-spine-2` on `e1-11`, in the default routers
 `router-srl-spine-1/2`. The `pan-d3l` lab below is destroyed and is kept as
 history. The README has the full port map.
