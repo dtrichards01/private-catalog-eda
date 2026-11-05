@@ -89,9 +89,11 @@ Run steps 1 to 3 of [DEMO-HYBRID-WATCH.md](DEMO-HYBRID-WATCH.md):
 1. **PAN rules.** Groups `eda-red`, `eda-blue`, `eda-green` (one subnet each
    of VNET `fw-pan-inside`) and four rules tagged `eda-export-to-gbp`: RED to
    BLUE web allow, RED to BLUE SSH deny, BLUE to GREEN web allow, RED to GREEN
-   deny. The report shows the GroupTags derived but not yet associated.
+   deny. EDA derives the GroupTags and the read-only MicroSegmentationPolicy
+   `fw-palo-alto` with six entries at once. The groups are NOT_ATTACHED, so
+   the policy matches nothing yet.
 2. **AssociationPolicies.** The operator attaches each GroupTag to its VLAN.
-   The read-only MicroSegmentationPolicy `fw-palo-alto` gets six entries.
+   The groups turn RESOLVED and `fw-palo-alto` starts to match traffic.
 3. **Data path.** From red-1 and red-2, web to blue-1 works, SSH to blue-1
    goes from refused by host to dropped at the leaf, and everything to
    green-1 is dropped. The PAN traffic log shows none of it.
@@ -199,6 +201,10 @@ Release would always need an explicit operator approval.
 | Firewall Interfaces | Default Route None on all |
 | PAN and EDA | `bash scripts/fw-demo.sh baseline`: PAN rules `lab-untagged` and `allow-all` only, no registered IPs, no demo AssociationPolicies |
 | Report `palo-alto` | Exported 0, Steered 0, no `fw-steer-*` Configlet |
+
+Without the scripts, `python3 ~/fw-demo/pan-demo-rules.py remove` on k0r4
+removes the rules it added, or delete them by hand in the PAN UI: see
+[Cleaning up by hand in the PAN UI](DEMO-HYBRID-WATCH.md#cleaning-up-by-hand-in-the-pan-ui).
 
 If a report transaction fails during WATCH, unregister the IP. A
 Rejected report keeps its GroupTags, so the AssociationPolicies keep working

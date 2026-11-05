@@ -1,14 +1,14 @@
 # Hybrid WATCH demo: firewall rules, fabric microsegmentation and per-host inspection
 
-A step-by-step guide for `firewall.eda.labs` v1.9.0 on EDA #2, namespace
+A step-by-step guide for `firewall.eda.labs` v1.9.1 on EDA #2, namespace
 `clab-srl-leaf-spine-dcgw`. It starts from an empty Palo Alto rule base.
 Each layer is added on top of the last, and the lab is reset at the end so
 the demo can be run again.
 
 | Layer | Where | What it adds |
 |-------|-------|--------------|
-| 1 | Palo Alto | Address groups RED, BLUE, GREEN and four rules tagged `eda-export-to-gbp` |
-| 2 | EDA | AssociationPolicies: where each GroupTag attaches in the fabric |
+| 1 | Palo Alto | Address groups RED, BLUE, GREEN and four rules tagged `eda-export-to-gbp`. EDA derives the GroupTags and the policy `fw-palo-alto` |
+| 2 | EDA | AssociationPolicies: where each GroupTag attaches in the fabric, which makes the policy match traffic |
 | 3 | Data path | The leaf enforces the firewall's rules between the colours |
 | 4 | Palo Alto | A dynamic address group and a watch rule tagged `eda-watch` |
 | 5 | Palo Alto runtime | Tag one host's IP; EDA steers only that host through the firewall |
@@ -124,7 +124,7 @@ To watch EDA during the demo, keep these open:
 
 - **Firewall Policy Reports**, report `palo-alto`: Summary, Groups, Rules and
   Derived (Policy and Steering).
-- **Microsegmentation**, policy `fw-palo-alto` (exists from layer 2).
+- **Microsegmentation**, policy `fw-palo-alto` (exists from layer 1).
 - A shell on k0r4 for the leaf:
 
   ```bash
@@ -140,8 +140,8 @@ UI clicks if you want to build a layer by hand instead.
 | Step | Run | What the script did | Then show |
 |------|-----|---------------------|-----------|
 | 0 | `fw-demo-hosts.sh status`, `fw-demo.sh baseline`, `fw-demo.sh test` | Checked the hosts, reset the PAN and EDA, tested every flow | EDA report `palo-alto`: Exported 0, Steered 0. Terminal: everything reachable. PAN **Monitor, Traffic**: only traffic to the outside host |
-| 1 | `fw-demo.sh rules` | On the PAN: tag `eda-export-to-gbp`, addresses and groups `eda-red`, `eda-blue`, `eda-green`, services `eda-tcp-web` and `eda-tcp-ssh`, the four rules; then a commit | PAN **Policies, Security**: the four tagged rules. EDA report: Exported 4, groups **UNRESOLVED**. EDA **Microsegmentation, GroupTags**: `eda-red`, `eda-blue`, `eda-green`, created by the report. No policy yet |
-| 2 | `fw-demo.sh associate` | In EDA: three AssociationPolicies, each GroupTag to its VLAN. This is the operator's part; it is not derived | EDA **Association Policies**: the three. Report: groups **RESOLVED**, Translated 4. **Microsegmentation, Policies**, `fw-palo-alto`: six entries, read-only |
+| 1 | `fw-demo.sh rules` | On the PAN: tag `eda-export-to-gbp`, addresses and groups `eda-red`, `eda-blue`, `eda-green`, services `eda-tcp-web` and `eda-tcp-ssh`, the four rules; then a commit | PAN **Policies, Security**: the four tagged rules. EDA report: Exported 4, Eligible 4, groups **NOT_ATTACHED**. EDA **Microsegmentation, GroupTags**: `eda-red`, `eda-blue`, `eda-green`, created by the report. **Microsegmentation, Policies**, `fw-palo-alto`: six entries, read-only, matching nothing yet |
+| 2 | `fw-demo.sh associate` | In EDA: three AssociationPolicies, each GroupTag to its VLAN. This is the operator's part; it is not derived | EDA **Association Policies**: the three. Report: groups **RESOLVED**. `fw-palo-alto` is unchanged but now matches traffic |
 | 3 | `fw-demo.sh test` | Probed web, SSH and ping from red-1, red-2 and blue-1, then read the PAN traffic log | Terminal: SSH to BLUE and everything to GREEN dropped. PAN **Monitor, Traffic**: still only outside traffic, so the leaf did the dropping |
 | 4 | `fw-demo.sh watch-rule` | On the PAN: tags `eda-watch` and `eda-security-watch`, dynamic group `eda-watched`, rule `EDA-WATCH-RED`; then a commit | PAN: the rule and the empty dynamic group. EDA report, Derived, Steering: **ARMED**, `NO_MEMBERS` |
 | 5 | `fw-demo.sh tag red-1` | Registered 10.31.1.10 with tag `eda-security-watch` through the User-ID API. No commit | PAN **Objects, Address Groups**, `eda-watched`, **more...**: 10.31.1.10. EDA report: two rows **STEERED**. EDA **Configlets**: `fw-steer-palo-alto-srl-leaf-1` |
@@ -245,16 +245,36 @@ report `palo-alto`:
 
 ```
   report: health OK, config version 41, generation Enabled, exported 4, steered 0
-   group eda-red    UNRESOLVED   GROUPTAG_NOT_ASSOCIATED: eda-red
-   group eda-blue   UNRESOLVED   GROUPTAG_NOT_ASSOCIATED: eda-blue
-   group eda-green  UNRESOLVED   GROUPTAG_NOT_ASSOCIATED: eda-green
+   group eda-red    NOT_ATTACHED GROUPTAG_NOT_ASSOCIATED: eda-red
+   group eda-blue   NOT_ATTACHED GROUPTAG_NOT_ASSOCIATED: eda-blue
+   group eda-green  NOT_ATTACHED GROUPTAG_NOT_ASSOCIATED: eda-green
+   entry EDA-RED-to-BLUE-WEB    eda-red -> eda-blue TCP 80 Accept
+   entry EDA-RED-to-BLUE-WEB    eda-red -> eda-blue TCP 443 Accept
+   entry EDA-RED-to-BLUE-SSH    eda-red -> eda-blue TCP 22 Drop
+   entry EDA-BLUE-to-GREEN-WEB  eda-blue -> eda-green TCP 80 Accept
+   entry EDA-BLUE-to-GREEN-WEB  eda-blue -> eda-green TCP 443 Accept
+   entry EDA-RED-to-GREEN-DENY  eda-red -> eda-green any  Drop
 ```
 
 - Exported 4: the four tagged rules. `lab-untagged` and `allow-all` are not
   tagged, so EDA ignores them.
-- EDA created GroupTags `eda-red`, `eda-blue` and `eda-green`, but they are
-  not attached to anything yet, so each rule waits with
-  `GROUPTAG_NOT_ASSOCIATED`. No fabric policy exists yet.
+- EDA created GroupTags `eda-red`, `eda-blue` and `eda-green` and the
+  read-only MicroSegmentationPolicy **`fw-palo-alto`** with six entries. Its
+  scope is VNET `fw-pan-inside`, where the three subnets are.
+- The groups are **NOT_ATTACHED**: no AssociationPolicy says which VLANs
+  carry each GroupTag, so the leaf tags no traffic and the policy matches
+  nothing yet. `fw-demo.sh test` still shows every flow open. Attaching is
+  the operator's step 2.
+
+**Optional: a rule EDA rejects.** On k0r4, `python3 ~/fw-demo/pan-demo-rules.py add`
+adds the same four rules plus a fifth, `EDA-BLUE-to-RED1-SSH`, to group
+`eda-red-1`, which holds only red-1's address 10.31.1.10/32. A GroupTag is a
+whole fabric subnet, so EDA rejects that rule: UNSUPPORTED with
+`IDENTITY_UNRESOLVED: eda-red-1`, and the group shows
+`HOST_MEMBER_NOT_SUPPORTED`. The other four still translate, and the PAN
+alone enforces the fifth. `fw-demo.sh baseline` or `pan-demo-rules.py remove`
+removes it too; to do it in the UI, see
+[Cleaning up by hand in the PAN UI](#cleaning-up-by-hand-in-the-pan-ui).
 
 **Why the RED to BLUE deny names a service.** A natural first try is "allow
 web, then deny everything else" between RED and BLUE. EDA refuses that rule
@@ -283,18 +303,13 @@ The same YAML is in
 
 Script: `bash scripts/fw-demo.sh associate`.
 
-**What EDA shows** in about a minute: the groups turn **RESOLVED**,
-Translated becomes 4, and Derived, Policy lists six entries, now in the
-read-only MicroSegmentationPolicy **`fw-palo-alto`**:
-
-```
-   entry EDA-RED-to-BLUE-WEB    eda-red -> eda-blue TCP 80 Accept
-   entry EDA-RED-to-BLUE-WEB    eda-red -> eda-blue TCP 443 Accept
-   entry EDA-RED-to-BLUE-SSH    eda-red -> eda-blue TCP 22 Drop
-   entry EDA-BLUE-to-GREEN-WEB  eda-blue -> eda-green TCP 80 Accept
-   entry EDA-BLUE-to-GREEN-WEB  eda-blue -> eda-green TCP 443 Accept
-   entry EDA-RED-to-GREEN-DENY  eda-red -> eda-green any  Drop
-```
+**What EDA shows** in about a minute: the groups turn **RESOLVED** and the
+Virtual Networks of each group are now where its AssociationPolicy attaches
+it. `fw-palo-alto` keeps the same six entries; what changes is that the leaf
+now tags traffic from each subnet, so the entries start to match.
+If a member lies outside the VLANs its AssociationPolicy names, the group
+goes UNRESOLVED (`MEMBER_OUTSIDE_TAG_TARGETS`) and its rules drop out of the
+policy.
 
 Open `fw-palo-alto` and show that it cannot be edited: the report owns it,
 and the next PAN change rewrites it.
@@ -535,6 +550,52 @@ About 5 minutes. In order, it:
 The demo can then be run again from step 1. `bash scripts/fw-demo.sh all`
 runs every step end to end and finishes at the baseline.
 
+### Cleaning up by hand in the PAN UI
+
+Use this if you added the rules with `pan-demo-rules.py add`, or built them
+in the UI, and want to remove them without the scripts.
+`python3 ~/fw-demo/pan-demo-rules.py remove` on k0r4 does the same in one go.
+
+The rules only show the names of the objects they use. The objects
+themselves are under the **Objects** tab. Delete the rules first: the PAN
+refuses to delete an object a rule or group still uses ("in use").
+
+**Before the PAN, in EDA.** If you did step 2, first delete
+AssociationPolicies `eda-red`, `eda-blue` and `eda-green` under
+**Microsegmentation, Association Policies**, namespace
+`clab-srl-leaf-spine-dcgw`. EDA cannot remove a GroupTag an
+AssociationPolicy still uses. If you did step 5, release red-1 first with
+`bash scripts/fw-demo.sh untag red-1`. A User-ID registered IP has no
+delete button in the PAN UI.
+
+In the PAN web UI (https://100.124.186.51:8444). If the page shows a
+**Virtual System** drop-down at the top left, pick **vsys1**: the demo
+objects are there, not in Shared. Each page has a filter box at the top;
+type `eda-` to list only the demo objects.
+
+| Order | Where | Delete | Keep |
+|-------|-------|--------|------|
+| 1 | **Policies, Security** | `EDA-RED-to-BLUE-WEB`, `EDA-RED-to-BLUE-SSH`, `EDA-BLUE-to-GREEN-WEB`, `EDA-RED-to-GREEN-DENY`, `EDA-BLUE-to-RED1-SSH` (bad rule, `pan-demo-rules.py` only), `EDA-WATCH-RED` (step 4 only) | `lab-untagged`, `allow-all` |
+| 2 | **Objects, Address Groups** | `eda-red`, `eda-blue`, `eda-green`, `eda-red-1` (`pan-demo-rules.py` only), `eda-watched` (step 4 only) | |
+| 3 | **Objects, Addresses** | `eda-red-subnet`, `eda-blue-subnet`, `eda-green-subnet`, `eda-red-1-ip` (`pan-demo-rules.py` only) | |
+| 4 | **Objects, Services** | `eda-tcp-web`, `eda-tcp-ssh` | The predefined services |
+| 5 | **Objects, Tags** | `eda-export-to-gbp`; `eda-watch` and `eda-security-watch` (step 4 only) | |
+| 6 | **Commit** (top right), then **Commit** in the dialog | 1 to 4 minutes | |
+
+On each page, tick the boxes and click **Delete** at the bottom. If a
+delete says the object is in use, something earlier in the table still
+names it.
+
+**What EDA does by itself.** About 30 seconds after the commit, report
+`palo-alto` shows Exported 0. EDA then removes `fw-palo-alto` and the
+derived GroupTags (`eda-red`, `eda-blue`, `eda-green`, and `eda-red-1` if
+present). Nothing else is left in EDA: the rules never create
+AssociationPolicies.
+
+**If a script then refuses with "uncommitted changes",** the UI left
+something staged. Commit or discard it in the UI (**Commit, Revert
+Changes**), or run `python3 ~/fw-demo/pan-demo-rules.py revert`.
+
 ## How the redirection works
 
 1. The collector polls the PAN every 30 seconds through the XML API: the
@@ -590,7 +651,7 @@ Why policy routing: the IXR-D2L has no ACL redirect action, and on SR Linux
 | Step | Time |
 |------|------|
 | PAN commit, then EDA reflects it | 2 to 5 min |
-| AssociationPolicies to policy built | about 1 min |
+| AssociationPolicies to groups RESOLVED | about 1 min |
 | Tag or untag an IP to the leaf changing | under 1 min |
 | `test` (waits for the PAN traffic log) | about 2 min |
 | Baseline | 5 to 8 min |
@@ -600,7 +661,9 @@ Why policy routing: the IXR-D2L has no ACL redirect action, and on SR Linux
 | Symptom | Cause and fix |
 |---------|---------------|
 | `baseline` says hosts not running | Run `bash scripts/fw-demo-hosts.sh deploy`. A host container restart loses its cable; deploy re-creates it |
-| A group stays UNRESOLVED `GROUPTAG_NOT_ASSOCIATED` | Its AssociationPolicy is missing or names a different VLAN |
+| A group stays NOT_ATTACHED after step 2 | Its AssociationPolicy is missing or names another GroupTag |
+| A group is UNRESOLVED `MEMBER_OUTSIDE_TAG_TARGETS` | Its AssociationPolicy names a VLAN that is not the member's subnet |
+| A group is UNRESOLVED `HOST_MEMBER_NOT_SUPPORTED` | It holds a /32. A GroupTag is a whole fabric subnet; use the subnet, or watch the host instead (layer 4) |
 | A rule is UNSUPPORTED `PRECEDENCE_AMBIGUOUS` | An earlier exported rule overlaps it with a different action. Narrow the service |
 | A group is `GROUP_NAME_NOT_LOWERCASE` | Rename the PAN group in lower case |
 | The steer row is ARMED after tagging | The tag name differs from the dynamic group's match, or the collector has not polled yet (30 s) |

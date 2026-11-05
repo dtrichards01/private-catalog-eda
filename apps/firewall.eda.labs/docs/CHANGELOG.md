@@ -1,13 +1,22 @@
 # Changelog
 
+## v1.9.2
+
+- A GroupTag is derived only for a group that a translated rule uses. Before, every lower-case group an exported rule named became a GroupTag, so a rejected rule still built one. The bad demo rule's group `eda-red-1` (a `/32`) was the example, along with `web-servers` and `dag-web` in the captured lab policy. Groups only rejected rules use are still listed under Groups with their reasons. The v1.8.0 reason for deriving them early, so the operator could associate before any rule translated, ended with v1.9.1
+- If a rule stops translating and its group is used by no other translated rule, the derived GroupTag is removed. An AssociationPolicy that still names it makes EDA refuse the change, and the report goes Rejected until the AssociationPolicy is removed. Deleting the group on the PAN already did the same
+- Evaluator `policy-eval/9`
+- No install order: no API change
+
 ## v1.9.1
 
 - The MicroSegmentationPolicy derives as soon as the firewall rules are committed, before any AssociationPolicy exists. Before, a group without an AssociationPolicy was UNRESOLVED (`GROUPTAG_NOT_ASSOCIATED`) and its rules were held back, so only the GroupTags appeared. Attaching the GroupTags stays with the operator
 - New group state NOT_ATTACHED: the GroupTag is valid and every member equals one fabric subnet, but nothing attaches the tag yet. Its rules translate, and the policy is applied to the virtual networks of those subnets. It matches no traffic for that tag until the operator attaches it. Once attached, the target checks (`MEMBER_OUTSIDE_TAG_TARGETS`, `TARGET_SHARED`, `SUBNET_SPLIT_ACROSS_TAGS`) apply as before
 - Groups not attached yet take part in the overlap check (`OVERLAPPING_MEMBERSHIP`) when they could translate. A group that cannot, such as one holding a `/32`, does not
 - `scripts/pan-demo-rules.py` adds a fifth, bad rule `EDA-BLUE-to-RED1-SSH` to group `eda-red-1` (10.31.1.10/32). EDA rejects it: UNSUPPORTED, `IDENTITY_UNRESOLVED`, with the group showing `HOST_MEMBER_NOT_SUPPORTED`. The other four rules still translate. It is last so it cannot make an earlier rule `PRECEDENCE_AMBIGUOUS`
+- `fw-demo.sh rules` now waits for `fw-palo-alto` as well as the GroupTags, and `associate` waits for the three groups to turn RESOLVED. `baseline` also removes the bad rule and its group and address
 - Evaluator `policy-eval/8`
 - No install order: no API change
+- Live, 2026-11-05: with the five rules committed and no AssociationPolicies, the report showed Exported 5, Eligible 4, eda-red, eda-blue and eda-green NOT_ATTACHED over `fw-pan-inside`, and `fw-palo-alto` derived with six entries on srl-leaf-1. `fw-demo.sh test` showed every flow still open, RED to GREEN included
 
 ## v1.9.0
 

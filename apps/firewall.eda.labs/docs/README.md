@@ -335,6 +335,15 @@ is vendor neutral: a FortiGate report shows its VDOM scope and
 section-label marker, and is UNAVAILABLE until the FortiGate reader ships.
 See [POLICY-GATES.md](POLICY-GATES.md).
 
+Since v1.9.1 the policy derives as soon as the rules are committed. A group
+whose GroupTag has no AssociationPolicy yet, but whose members are whole
+fabric subnets, is NOT_ATTACHED: its rules translate over the virtual
+networks of those subnets and match nothing until the operator attaches the
+GroupTag. Live on 2026-11-05, five rules from `scripts/pan-demo-rules.py`
+and no AssociationPolicies gave `fw-palo-alto` with six entries over
+`fw-pan-inside`, every flow still open, and the fifth rule (to a `/32`
+group) rejected with `IDENTITY_UNRESOLVED`.
+
 ## Default route (v1.8.6)
 
 An inside FirewallInterface can send the zone's default route to the

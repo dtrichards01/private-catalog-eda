@@ -28,8 +28,11 @@ firewall's.
    otherwise the report derives it. Another invalid name is shown with
    GROUPTAG_NAME_INVALID. Where the GroupTag is attached comes from the
    operator's AssociationPolicies. A GroupTag with no AssociationPolicy is
-   shown with GROUPTAG_NOT_ASSOCIATED and its rules are not translated until
-   it is associated.
+   shown with GROUPTAG_NOT_ASSOCIATED. If its members pass the subnet checks
+   below, the group is NOT_ATTACHED (v1.9.1): its rules translate, the policy
+   is applied to the virtual networks of those subnets, and it matches nothing
+   for the tag until the operator attaches it. Otherwise it is UNRESOLVED and
+   its rules are not translated.
    Every member must be built to what the fabric can tag (v1.8.3):
    - an IPv4 prefix equal to an IRB subnet or a routed-interface subnet of the
      virtual networks. A `/32`, including a DAG registered IP, is
@@ -220,7 +223,7 @@ source-health gates.
 | B | Snapshot records revision, scope, capture time, completeness | `snapshot` in the policy report. Shared objects read; no pagination in the XML config read. | Lab evidence |
 | C | Microsegmentation app northbound contract | Not supplied. The installed CRDs (`microsegmentation.eda.nokia.com/v1alpha1`) are known, but a CRD is not a versioned contract. | BLOCKED |
 | D | Identity resolves uniquely to one namespace, VNET, service target, endpoint | Group name to GroupTag, derived unless the operator has one; targets from the operator's AssociationPolicies; members checked against the targets' IRB subnets. Live: EDA-RED, EDA-BLUE, EDA-GREEN RESOLVED on `eda-red`, `eda-blue`, `eda-green`. | Lab evidence |
-| D | Cross-VNET, overlap, unmanaged, conflicting tags rejected | Unit tests for MEMBER_OUTSIDE_TAG_TARGETS, TARGET_SHARED, OVERLAPPING_MEMBERSHIP (tagged groups only), GROUPTAG_NOT_ASSOCIATED. Same IP in two VNETs not tested live. | OPEN |
+| D | Cross-VNET, overlap, unmanaged, conflicting tags rejected | Unit tests for MEMBER_OUTSIDE_TAG_TARGETS, TARGET_SHARED, OVERLAPPING_MEMBERSHIP (attached groups, and from v1.9.1 unattached groups that could translate), GROUPTAG_NOT_ASSOCIATED and NOT_ATTACHED. Same IP in two VNETs not tested live. | OPEN |
 | D | Unowned objects never adopted | GroupTags and AssociationPolicies are only read. The one written object, `fw-<firewall>`, is a derived resource of the report. | Lab evidence |
 | E | Profile bound to builds; unknown never equivalent | No profile ships; every candidate is UNSUPPORTED with COMPATIBILITY_UNVALIDATED. | Lab evidence for "unknown never equivalent"; profile OPEN |
 | E | PAN-only semantics never produce a broad allow | App-ID, User-ID, URL, HIP, and profile rules are NGFW_REQUIRED; `any` is UNSUPPORTED. | Lab evidence |

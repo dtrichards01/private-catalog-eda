@@ -331,8 +331,9 @@ spec:
                         addressGroup:
                           type: string
                           description: Firewall group it is made from.
-                    description: 'GroupTags this report builds: every lower-case group
-                      an exported rule names that has no operator GroupTag.'
+                    description: 'GroupTags this report builds: every group a translated
+                      rule uses that has no operator GroupTag. A group only rejected
+                      rules use is shown under Groups and not built.'
                   steering:
                     type: array
                     items:

@@ -7,7 +7,7 @@ spec:
   version: v1alpha1
   title: Firewalls
   description: Lab prototype for two firewall use cases. Not a product. A product needs the Push Pull Provider first; development work for the FW Integration App is tracked for sometime in 2027.
-  image: ghcr.io/dtrichards01/private-eda-registry/firewall:v1.9.1
+  image: ghcr.io/dtrichards01/private-eda-registry/firewall:v1.9.2
   author: dtrichards01
   gitPathPrefix: /
   supportedEndpoints:
@@ -23,7 +23,7 @@ spec:
     categories:
       - services
     ociSpecVersion: v1.0.0
-    appImageDigest: sha256:3585422b3074c57b6f82eb7cce98bb0e77966d3c8c6f3ed24bf338303a89a0b0
+    appImageDigest: sha256:6d455a2b7f90f8a5350b6cbbd88660e9763a62186232e065167b402cc3b59867
   components:
     - crd:
         path: firewall/crds/firewall.eda.labs_firewalls.yaml
